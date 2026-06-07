@@ -2,51 +2,58 @@ async function processData() {
     const mathistFile = document.getElementById('mathist').files[0];
     const me2mFile = document.getElementById('me2m').files[0];
 
+    // 1. Fetch the permanent schema file from your website
+    const response = await fetch('Annexure_B_Schema.xlsx');
+    const arrayBuffer = await response.arrayBuffer();
+    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+
     const mathistData = await readExcel(mathistFile);
     const me2mData = await readExcel(me2mFile);
 
     const materials = [...new Set(mathistData.map(r => r.Material))].sort();
 
-    const result = materials.map((mat, idx) => {
-        const rows = mathistData.filter(r => r.Material === mat);
-        const me2mRows = me2mData.filter(r => r.Material === mat)
-                                 .sort((a, b) => new Date(b["Document Date"]) - new Date(a["Document Date"]));
-        
-        const prRow = rows.find(r => r["Doc. Type"] === "PurRqs");
-        const poRow = rows.find(r => r["Doc. Type"] === "POitem");
+    // 2. Populate the existing schema
+    materials.forEach((mat, idx) => {
+        const row = idx + 2; // Assuming data starts at row 2
+        const data = calculateRowData(mat, mathistData, me2mData);
 
-        return {
-            "S No.": idx + 1,
-            "Material": mat,
-            "Description": rows[0]?.["Material Description"] || "NA",
-            "Stock": rows.reduce((acc, r) => acc + (Number(r.Stock) || 0), 0),
-            "Total 5 Year Consumption": (Number(rows[0]?.["Cons-Curr Fin. Yr - 4"]) || 0) + (Number(rows[0]?.["Cons-Curr Fin. Yr  -3"]) || 0) + (Number(rows[0]?.["Cons-Curr Fin. Yr - 2"]) || 0) + (Number(rows[0]?.["Cons-Prev Fin. Yr."]) || 0) + (Number(rows[0]?.["Cons-Curr Fin. Year"]) || 0),
-            "PR_Doc": prRow ? prRow["Doc. Detail"] : "NA",
-            "PR_Date": prRow ? prRow["Req. date"] : "NA",
-            "PR_Qty": prRow ? prRow["Quantity"] : "NA",
-            "POItem_Doc": poRow ? poRow["Doc. Detail"] : "NA",
-            "POItem_Qty": poRow ? poRow["Quantity"] : "NA",
-            "LatestPO_Doc": me2mRows[0]?.["Purchasing Document"] || "NA",
-            "LatestPO_Item": me2mRows[0]?.["Item"] || "NA",
-            "LatestPO_Date": me2mRows[0]?.["Document Date"] || "NA"
-        };
+        // Map data to the exact columns of your permanent schema
+        sheet[`A${row}`] = { t: 'n', v: idx + 1 };
+        sheet[`B${row}`] = { t: 's', v: mat };
+        sheet[`D${row}`] = { t: 's', v: data.desc };
+        sheet[`F${row}`] = { t: 'n', v: data.stock };
+        sheet[`G${row}`] = { t: 'n', v: data.totalCons };
+        sheet[`P${row}`] = { t: 's', v: data.poDoc }; // P (PO Doc)
+        sheet[`Q${row}`] = { t: 'n', v: data.poQty }; // Q (PO Qty)
+        sheet[`R${row}`] = { t: 's', v: data.prDoc }; // R (PR Doc)
+        sheet[`S${row}`] = { t: 's', v: data.prDate };// S (PR Date)
+        sheet[`T${row}`] = { t: 'n', v: data.prQty }; // T (PR Qty)
+        sheet[`U${row}`] = { t: 's', v: data.latestPoDoc }; // U
+        sheet[`V${row}`] = { t: 's', v: data.latestPoItem }; // V
+        sheet[`W${row}`] = { t: 's', v: data.latestPoDate }; // W
     });
 
-    // Export to Excel
-    const ws = XLSX.utils.json_to_sheet(result);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "AnnexureB");
-    XLSX.writeFile(wb, "Annexure_B_Generated.xlsx");
+    // 3. Trigger download of the filled schema
+    XLSX.writeFile(workbook, "Filled_Annexure_B.xlsx");
 }
 
-function readExcel(file) {
-    return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, {type: 'array'});
-            resolve(XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]));
-        };
-        reader.readAsArrayBuffer(file);
-    });
+// Helper to calculate row data
+function calculateRowData(mat, mathist, me2m) {
+    const rows = mathist.filter(r => r.Material === mat);
+    const mRow = me2m.filter(r => r.Material === mat).sort((a,b) => new Date(b["Document Date"]) - new Date(a["Document Date"]))[0];
+    
+    return {
+        desc: rows[0]?.["Material Description"] || "NA",
+        stock: rows.reduce((a, r) => a + (Number(r.Stock) || 0), 0),
+        totalCons: rows.reduce((a, r) => a + (Number(r["Cons-Curr Fin. Year"]) || 0), 0),
+        prDoc: rows.find(r => r["Doc. Type"] === "PurRqs")?.["Doc. Detail"] || "NA",
+        prDate: rows.find(r => r["Doc. Type"] === "PurRqs")?.["Req. date"] || "NA",
+        prQty: rows.find(r => r["Doc. Type"] === "PurRqs")?.["Quantity"] || 0,
+        poDoc: rows.find(r => r["Doc. Type"] === "POitem")?.["Doc. Detail"] || "NA",
+        poQty: rows.find(r => r["Doc. Type"] === "POitem")?.["Quantity"] || 0,
+        latestPoDoc: mRow?.["Purchasing Document"] || "NA",
+        latestPoItem: mRow?.["Item"] || "NA",
+        latestPoDate: mRow?.["Document Date"] || "NA"
+    };
 }
