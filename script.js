@@ -7,7 +7,8 @@ async function runProcess() {
     if (!mathistFile || !me2mFile) { alert("Please upload both files"); return; }
 
     // Fetch the template file stored in your GitHub repository
-    const response = await fetch('Annexure_B_Schema.xlsx');
+    // Use a leading slash to ensure it looks from the root of the project
+     const response = await fetch('/auto_pr/Annexure_B_Schema.xlsx');
     const arrayBuffer = await response.arrayBuffer(); // Convert file to binary data
     const workbook = XLSX.read(arrayBuffer, { type: 'array' }); // Read the Excel file
     const sheet = workbook.Sheets[workbook.SheetNames[0]]; // Select the first tab
