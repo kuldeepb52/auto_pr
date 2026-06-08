@@ -1,15 +1,88 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Annexure e Generator</title>
+    <meta charset="UTF-8">
+    <title>Annexure B Generator</title>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 </head>
 <body>
-    <h2>Upload Files for Annexure B</h2>
-    <input type="file" id="mathist" accept=".xlsx, .csv" /> ZMMMATHIST.XLSX<br><br>
-    <input type="file" id="me2m" accept=".xlsx, .csv" /> ME2M.XLSX<br><br>
-    <button onclick="processData()">Generate and Download Annexure B</button>
+    <h2>Annexure B Procurement Justification</h2>
+    
+    <p>1. Select ZMMMATHIST.XLSX: <input type="file" id="mathist" accept=".xlsx" /></p>
+    <p>2. Select ME2M.XLSX: <input type="file" id="me2m" accept=".xlsx" /></p>
+    
+    <button onclick="runProcess()" style="padding: 10px 20px; background-color: #28a745; color: white; border: none; cursor: pointer;">
+        Generate & Download Annexure B
+    </button>
 
-    <script src="script.js"></script>
+    <script>
+        // This is the template data you provided. It builds the Excel structure in memory.
+        const TEMPLATE_DATA = "QU5ORVhVUkUtQiA6IE1hdGVyaWFsIFByb2N1cmVtZW50IEp1c3RpZmljYXRpb24gc2hlZXQJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkKWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYgtIFBSOiBYWFhYWFhYWFhYWFgJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQpQUiBOby4gOlhYWFhYWFhYWCwgRGF0ZS1YWFhYWFhYWFgJCQlFc3RpbWF0ZWQgVmFsdWUgOiBScy4gWFhYWFhYWFhYLy0JCQkJCQkJCQkJCQkJCQkJCQkJCQoxCTIJCTMJNAk1CTYJNwk4CTkJMTAJMTEJMTIJMTMJMTQJMTUJMTYJMTcJCTE4CTE5CTIwCTIxCTIyClMgTm8uCU1hdGVyaWFsCU9sZCBNYXRlcmlhbCBjb2RlCU1hdGVyaWFsIERlc2NyaXB0aW9uCSJQb3B1bGF0aW9uCihNZXRlcikiCVN0b2NrIFF0eQk1IHllYXIgY29uc3VtcHRpb24JUXR5IHJlcXVlc3RlZAlOb3JtYWwgTGlmZSBvZiBpdGVtIChZZWFyKQlMYXN0IEZpdmUgWWVhciBDb25zdW1wdGlvbgkJCQkJRmFpbHVyZSBSYXRlCVBpcGVsaW5lIFBPIAkJUGlwZWxpbmUgUFIJCQlMYXN0IFBPIE5vLglMYXN0IFBPLiBJdGVtIFNsLiBOby4JTGFzdCBQTyBkYXRlCUp1c3RpZmljYXRpb24KCQkJCQkJCQkJUHJldmlvdXMgRlktNAlQcmV2aW91cyBGWS0zCVByZXZpb3VzIEZZLTIJUHJldmlvdXMgRlktMQlDdXJyZW50IEZZCQlQTyBObyAvIFNsIE5vLglRdHkgCVBSTm8uIC8gU2wgTm8uCVBSIERhdGUgCVF0eSAJCQkJCg==";
+
+        async function runProcess() {
+            const mathistInput = document.getElementById('mathist').files[0];
+            const me2mInput = document.getElementById('me2m').files[0];
+
+            if (!mathistInput || !me2mInput) { alert("Please select both files!"); return; }
+
+            // 1. Create the base template from your string
+            const csvContent = atob(TEMPLATE_DATA);
+            const workbook = XLSX.read(csvContent, { type: 'string' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+
+            // 2. Read the user uploaded files
+            const mathistData = await readExcel(mathistInput);
+            const me2mData = await readExcel(me2mInput);
+
+            // 3. Get list of unique Materials
+            const materials = [...new Set(mathistData.map(r => r.Material))].filter(m => m).sort();
+
+            // 4. Fill data starting from Row 7
+            materials.forEach((mat, idx) => {
+                const rowNum = idx + 7;
+                const mHistory = mathistData.filter(r => r.Material === mat);
+                
+                // Get most recent PO from ME2M
+                const latestPO = me2mData.filter(r => r.Material === mat)
+                                         .sort((a,b) => new Date(b["Document Date"]) - new Date(a["Document Date"]))[0];
+
+                const prData = mHistory.find(r => r["Doc. Type"] === "PurRqs") || {};
+                const poData = mHistory.find(r => r["Doc. Type"] === "POitem") || {};
+
+                // Map results to columns (A=S.No, B=Material, P=PO Qty, etc.)
+                XLSX.utils.sheet_add_aoa(sheet, [[
+                    idx + 1, // Col A (S.No)
+                    mat      // Col B (Material)
+                ]], { origin: `A${rowNum}` });
+
+                XLSX.utils.sheet_add_aoa(sheet, [[
+                    poData["Doc. Detail"] || "NA", // Col P
+                    poData["Quantity"] || 0,       // Col Q
+                    prData["Doc. Detail"] || "NA", // Col R
+                    prData["Req. date"] || "NA",    // Col S
+                    prData["Quantity"] || 0,       // Col T
+                    latestPO ? latestPO["Purchasing Document"] : "NA", // Col U
+                    latestPO ? latestPO["Item"] : "NA",              // Col V
+                    latestPO ? latestPO["Document Date"] : "NA"       // Col W
+                ]], { origin: `P${rowNum}` });
+            });
+
+            // 5. Trigger download
+            XLSX.writeFile(workbook, "Generated_Annexure_B.xlsx");
+        }
+
+        // Helper: Convert Excel file to data we can work with
+        function readExcel(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const data = new Uint8Array(e.target.result);
+                    const wb = XLSX.read(data, { type: 'array' });
+                    resolve(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]));
+                };
+                reader.readAsArrayBuffer(file);
+            });
+        }
+    </script>
 </body>
 </html>
