@@ -32,9 +32,6 @@
     <div id="msgLog"></div>
 
     <script>
-        // Embedded layout matching your schema exactly (CSV structure in Base64)
-        const TEMPLATE_DATA = "QU5ORVhVUkUtQiA6IE1hdGVyaWFsIFByb2N1cmVtZW50IEp1c3RpZmljYXRpb24gc2hlZXQJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkKWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYgtIFBSOiBYWFhYWFhYWFhYWFgJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQpQUiBOby4gOlhYWFhYWFhYWCwgRGF0ZS1YWFhYWFhYWFgJCQlFc3RpbWF0ZWQgVmFsdWUgOiBScy4gWFhYWFhYWFhYLy0JCQkJCQkJCQkJCQkJCQkJCQkJCQoxCTIJCTMJNAk1CTYJNwk4CTkJMTAJMTEJMTIJMTMJMTQJMTUJMTYJMTcJCTE4CTE5CTIwCTIxCTIyClMgTm8uCU1hdGVyaWFsCU9sZCBNYXRlcmlhbCBjb2RlCU1hdGVyaWFsIERlc2NyaXB0aW9uCSJQb3B1bGF0aW9uCihNZXRlcikiCVN0b2NrIFF0eQk1IHllYXIgY29uc3VtcHRpb24JUXR5IHJlcXVlc3RlZAlOb3JtYWwgTGlmZSBvZiBpdGVtIChZZWFyKQlMYXN0IEZpdmUgWWVhciBDb25zdW1wdGlvbgkJCQkJRmFpbHVyZSBSYXRlCVBpcGVsaW5lIFBPIAkJUGlwZWxpbmUgUFIJCQlMYXN0IFBPIE5vLglMYXN0IFBPLiBJdGVtIFNsLiBOby4JTGFzdCBQTyBkYXRlCUp1c3RpZmljYXRpb24KCQkJCQkJCQkJUHJldmlvdXMgRlktNAlQcmV2aW91cyBGWS0zCVByZXZpb3VzIEZZLTIJUHJldmlvdXMgRlktMQlDdXJyZW50IEZZCQlQTyBObyAvIFNsIE5vLglRdHkgCVBSTm8uIC8gU2wgTm8uCVBSIERhdGUgCVF0eSAJCQkJCg==";
-
         function printLog(text, isError = true) {
             const container = document.getElementById('msgLog');
             container.style.display = "block";
@@ -61,12 +58,30 @@
                     return; 
                 }
 
-                // Parse core framework template
-                const csvStr = atob(TEMPLATE_DATA);
-                const workbook = XLSX.read(csvStr, { type: 'string' });
-                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                // 1. Create the Schema Structure natively as an Array instead of relying on a string
+                const workbook = XLSX.utils.book_new();
+                const schemaRows = [
+                    ["ANNEXURE-B : Material Procurement Justification sheet"],
+                    ["XXXXXXXXX- PR: XXXXXXXXXX"],
+                    ["PR No. :XXXXXXXXXX, Date-XXXXXXXXXX", "", "", "Estimated Value : Rs. XXXXXXXXXX/-"],
+                    ["1", "2", "", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "", "18", "19", "20", "21", "22"],
+                    [
+                        "S No.", "Material", "Old Material code", "Material Description", "Population\n(Meter)", 
+                        "Stock Qty", "5 year consumption", "Qty requested", "Normal Life of item (Year)", 
+                        "Last Five Year Consumption", "", "", "", "", "Failure Rate", 
+                        "Pipeline PO", "", "Pipeline PR", "", "", "Last PO No.", "Last PO. Item Sl. No.", "Last PO date", "Justification"
+                    ],
+                    [
+                        "", "", "", "", "", "", "", "", "", 
+                        "Previous FY-4", "Previous FY-3", "Previous FY-2", "Previous FY-1", "Current FY", "", 
+                        "PO No / Sl No.", "Qty", "PRNo. / Sl No.", "PR Date", "Qty"
+                    ]
+                ];
+                
+                const sheet = XLSX.utils.aoa_to_sheet(schemaRows);
+                XLSX.utils.book_append_sheet(workbook, sheet, "Annexure B");
 
-                // Read datasets
+                // 2. Read user datasets
                 const mathistData = await readExcel(mathistInput);
                 const me2mData = await readExcel(me2mInput);
 
@@ -74,7 +89,7 @@
                     throw new Error("One or both uploaded files do not contain data rows.");
                 }
 
-                // Smart Column Discovery (Fuzzy Matching keys)
+                // Smart Column Discovery
                 const mMatKey = getFuzzyKey(mathistData[0], "material");
                 const mTypeKey = getFuzzyKey(mathistData[0], "doctype") || getFuzzyKey(mathistData[0], "type");
                 const mDetailKey = getFuzzyKey(mathistData[0], "docdetail") || getFuzzyKey(mathistData[0], "detail");
@@ -93,24 +108,23 @@
                 const uniqueMaterials = [...new Set(mathistData.map(r => r[mMatKey]))].filter(m => m).sort();
 
                 uniqueMaterials.forEach((materialCode, index) => {
-                    const rowTarget = index + 7; // Insert from Row 7 downwards
+                    const rowTarget = index + 7; // Insert strictly from Row 7 downwards
                     
                     const mSubset = mathistData.filter(r => r[mMatKey] === materialCode);
-                    
-                    // Filter and find latest PO from ME2M data
                     const me2mSubset = me2mData.filter(r => r[eMatKey] === materialCode);
+                    
                     let newestPO = null;
                     if (me2mSubset.length > 0 && eDateKey) {
                         newestPO = me2mSubset.sort((a, b) => new Date(b[eDateKey]) - new Date(a[eDateKey]))[0];
                     }
 
-                    // Extract PurRqs and POitem structures
                     const prObject = mSubset.find(r => String(r[mTypeKey]).toLowerCase().includes("rqs") || String(r[mTypeKey]).toLowerCase().includes("pr")) || {};
                     const poObject = mSubset.find(r => String(r[mTypeKey]).toLowerCase().includes("item") || String(r[mTypeKey]).toLowerCase().includes("po")) || {};
 
-                    // Build cell items
+                    // Fill basic sequential identifiers
                     XLSX.utils.sheet_add_aoa(sheet, [[index + 1, materialCode]], { origin: `A${rowTarget}` });
 
+                    // Populating target mapping columns P through W
                     XLSX.utils.sheet_add_aoa(sheet, [[
                         mDetailKey ? (poObject[mDetailKey] || "NA") : "NA", 
                         mQtyKey ? (poObject[mQtyKey] || 0) : 0,       
@@ -123,7 +137,7 @@
                     ]], { origin: `P${rowTarget}` });
                 });
 
-                // Generate and clean download output
+                // Generate down-stream asset
                 XLSX.writeFile(workbook, "Generated_Annexure_B.xlsx");
                 printLog("Success! Your Filled Annexure B has been generated and downloaded automatically.", false);
 
