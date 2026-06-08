@@ -5,41 +5,50 @@
     <title>Annexure B Generator</title>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; margin: 30px; line-height: 1.6; }
-        .card { border: 1px solid #ccc; padding: 20px; border-radius: 8px; max-width: 500px; background: #f9f9f9; }
-        .btn { padding: 10px 20px; background-color: #28a745; color: white; border: none; cursor: pointer; border-radius: 4px; font-size: 16px; }
-        .btn:hover { background-color: #218838; }
-        #debugLog { margin-top: 20px; padding: 15px; border-radius: 4px; display: none; max-width: 600px; }
-        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        body { font-family: Arial, sans-serif; margin: 40px; background: #fdfdfd; color: #333; }
+        .box { border: 1px solid #d3d3d3; padding: 25px; border-radius: 6px; max-width: 550px; background: #ffffff; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .btn { padding: 12px 24px; background-color: #007bff; color: white; border: none; cursor: pointer; border-radius: 4px; font-size: 16px; font-weight: bold; width: 100%; margin-top: 15px; }
+        .btn:hover { background-color: #0056b3; }
+        input[type="file"] { margin-top: 5px; margin-bottom: 15px; display: block; width: 100%; }
+        #msgLog { margin-top: 20px; padding: 15px; border-radius: 4px; display: none; max-width: 550px; font-size: 14px; }
+        .err-style { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .ok-style { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
     </style>
 </head>
 <body>
 
     <h2>Annexure B Procurement Justification</h2>
     
-    <div class="card">
-        <p><strong>1. Select ZMMMATHIST:</strong><br>
-        <input type="file" id="mathist" accept=".xlsx, .xls" /></p>
+    <div class="box">
+        <label><strong>1. Upload ZMMMATHIST File:</strong></label>
+        <input type="file" id="mathist" accept=".xlsx, .xls" />
         
-        <p><strong>2. Select ME2M:</strong><br>
-        <input type="file" id="me2m" accept=".xlsx, .xls" /></p>
+        <label><strong>2. Upload ME2M File:</strong></label>
+        <input type="file" id="me2m" accept=".xlsx, .xls" />
         
-        <br>
-        <button class="btn" onclick="runProcess()">Generate Annexure B</button>
+        <button class="btn" onclick="runProcess()">Generate & Download Annexure B</button>
     </div>
 
-    <div id="debugLog"></div>
+    <div id="msgLog"></div>
 
     <script>
-        // Your embedded template layout (CSV format Base64)
+        // Embedded layout matching your schema exactly (CSV structure in Base64)
         const TEMPLATE_DATA = "QU5ORVhVUkUtQiA6IE1hdGVyaWFsIFByb2N1cmVtZW50IEp1c3RpZmljYXRpb24gc2hlZXQJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkKWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYgtIFBSOiBYWFhYWFhYWFhYWFgJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQpQUiBOby4gOlhYWFhYWFhYWCwgRGF0ZS1YWFhYWFhYWFgJCQlFc3RpbWF0ZWQgVmFsdWUgOiBScy4gWFhYWFhYWFhYLy0JCQkJCQkJCQkJCQkJCQkJCQkJCQoxCTIJCTMJNAk1CTYJNwk4CTkJMTAJMTEJMTIJMTMJMTQJMTUJMTYJMTcJCTE4CTE5CTIwCTIxCTIyClMgTm8uCU1hdGVyaWFsCU9sZCBNYXRlcmlhbCBjb2RlCU1hdGVyaWFsIERlc2NyaXB0aW9uCSJQb3B1bGF0aW9uCihNZXRlcikiCVN0b2NrIFF0eQk1IHllYXIgY29uc3VtcHRpb24JUXR5IHJlcXVlc3RlZAlOb3JtYWwgTGlmZSBvZiBpdGVtIChZZWFyKQlMYXN0IEZpdmUgWWVhciBDb25zdW1wdGlvbgkJCQkJRmFpbHVyZSBSYXRlCVBpcGVsaW5lIFBPIAkJUGlwZWxpbmUgUFIJCQlMYXN0IFBPIE5vLglMYXN0IFBPLiBJdGVtIFNsLiBOby4JTGFzdCBQTyBkYXRlCUp1c3RpZmljYXRpb24KCQkJCQkJCQkJUHJldmlvdXMgRlktNAlQcmV2aW91cyBGWS0zCVByZXZpb3VzIEZZLTIJUHJldmlvdXMgRlktMQlDdXJyZW50IEZZCQlQTyBObyAvIFNsIE5vLglRdHkgCVBSTm8uIC8gU2wgTm8uCVBSIERhdGUgCVF0eSAJCQkJCg==";
 
-        function showStatus(msg, isError = true) {
-            const logBox = document.getElementById('debugLog');
-            logBox.style.display = "block";
-            logBox.className = isError ? "error" : "success";
-            logBox.innerHTML = isError ? `<strong>Error:</strong> ${msg}` : msg;
+        function printLog(text, isError = true) {
+            const container = document.getElementById('msgLog');
+            container.style.display = "block";
+            container.className = isError ? "err-style" : "ok-style";
+            container.innerHTML = isError ? `<strong>Execution Stopped:</strong> ${text}` : text;
+        }
+
+        // Helper to find column key ignoring lowercase/uppercase/spaces
+        function getFuzzyKey(rowObj, searchWord) {
+            const cleanSearch = searchWord.toLowerCase().replace(/[^a-z0-9]/g, '');
+            return Object.keys(rowObj).find(k => {
+                const cleanKey = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+                return cleanKey.includes(cleanSearch);
+            });
         }
 
         async function runProcess() {
@@ -48,42 +57,98 @@
                 const me2mInput = document.getElementById('me2m').files[0];
 
                 if (!mathistInput || !me2mInput) { 
-                    showStatus("Please upload both files before clicking the button."); 
+                    printLog("Please make sure both files are attached before generating."); 
                     return; 
                 }
 
-                // 1. Rebuild template schema from internal memory string
-                const csvContent = atob(TEMPLATE_DATA);
-                const workbook = XLSX.read(csvContent, { type: 'string' });
+                // Parse core framework template
+                const csvStr = atob(TEMPLATE_DATA);
+                const workbook = XLSX.read(csvStr, { type: 'string' });
                 const sheet = workbook.Sheets[workbook.SheetNames[0]];
 
-                // 2. Read user files
+                // Read datasets
                 const mathistData = await readExcel(mathistInput);
                 const me2mData = await readExcel(me2mInput);
 
-                if (mathistData.length === 0) { throw new Error("ZMMMATHIST file seems empty or invalid."); }
-                if (me2mData.length === 0) { throw new Error("ME2M file seems empty or invalid."); }
-
-                // Check for "Material" column explicitly to catch naming mismatches
-                if (!mathistData[0].hasOwnProperty('Material')) {
-                    const columns = Object.keys(mathistData[0]).join(', ');
-                    throw new Error(`Could not find a column named exactly 'Material' in ZMMMATHIST. Found columns: [${columns}]. Please update the column header text in your excel sheet.`);
+                if (!mathistData.length || !me2mData.length) {
+                    throw new Error("One or both uploaded files do not contain data rows.");
                 }
 
-                // 3. Extract unique list of materials
-                const materials = [...new Set(mathistData.map(r => r.Material))].filter(m => m).sort();
+                // Smart Column Discovery (Fuzzy Matching keys)
+                const mMatKey = getFuzzyKey(mathistData[0], "material");
+                const mTypeKey = getFuzzyKey(mathistData[0], "doctype") || getFuzzyKey(mathistData[0], "type");
+                const mDetailKey = getFuzzyKey(mathistData[0], "docdetail") || getFuzzyKey(mathistData[0], "detail");
+                const mQtyKey = getFuzzyKey(mathistData[0], "quantity") || getFuzzyKey(mathistData[0], "qty");
+                const mDateKey = getFuzzyKey(mathistData[0], "reqdate") || getFuzzyKey(mathistData[0], "date");
 
-                // 4. Fill rows starting precisely at Row 7
-                materials.forEach((mat, idx) => {
-                    const rowNum = idx + 7;
-                    const mHistory = mathistData.filter(r => r.Material === mat);
+                const eMatKey = getFuzzyKey(me2mData[0], "material");
+                const ePoKey = getFuzzyKey(me2mData[0], "purchasingdocument") || getFuzzyKey(me2mData[0], "po");
+                const eItemKey = getFuzzyKey(me2mData[0], "item");
+                const eDateKey = getFuzzyKey(me2mData[0], "documentdate") || getFuzzyKey(me2mData[0], "date");
+
+                if (!mMatKey) throw new Error("Could not detect a 'Material' column header inside ZMMMATHIST.");
+                if (!eMatKey) throw new Error("Could not detect a 'Material' column header inside ME2M.");
+
+                // Process Unique Materials list
+                const uniqueMaterials = [...new Set(mathistData.map(r => r[mMatKey]))].filter(m => m).sort();
+
+                uniqueMaterials.forEach((materialCode, index) => {
+                    const rowTarget = index + 7; // Insert from Row 7 downwards
                     
-                    // Sort ME2M to find the newest entry based on Document Date
-                    const latestPO = me2mData.filter(r => r.Material === mat)
-                                             .sort((a,b) => new Date(b["Document Date"]) - new Date(a["Document Date"]))[0];
+                    const mSubset = mathistData.filter(r => r[mMatKey] === materialCode);
+                    
+                    // Filter and find latest PO from ME2M data
+                    const me2mSubset = me2mData.filter(r => r[eMatKey] === materialCode);
+                    let newestPO = null;
+                    if (me2mSubset.length > 0 && eDateKey) {
+                        newestPO = me2mSubset.sort((a, b) => new Date(b[eDateKey]) - new Date(a[eDateKey]))[0];
+                    }
 
-                    const prData = mHistory.find(r => r["Doc. Type"] === "PurRqs") || {};
-                    const poData = mHistory.find(r => r["Doc. Type"] === "POitem") || {};
+                    // Extract PurRqs and POitem structures
+                    const prObject = mSubset.find(r => String(r[mTypeKey]).toLowerCase().includes("rqs") || String(r[mTypeKey]).toLowerCase().includes("pr")) || {};
+                    const poObject = mSubset.find(r => String(r[mTypeKey]).toLowerCase().includes("item") || String(r[mTypeKey]).toLowerCase().includes("po")) || {};
 
-                    // Add row sequentially to Schema structure
-                    XLSX.utils.sheet_add
+                    // Build cell items
+                    XLSX.utils.sheet_add_aoa(sheet, [[index + 1, materialCode]], { origin: `A${rowTarget}` });
+
+                    XLSX.utils.sheet_add_aoa(sheet, [[
+                        mDetailKey ? (poObject[mDetailKey] || "NA") : "NA", 
+                        mQtyKey ? (poObject[mQtyKey] || 0) : 0,       
+                        mDetailKey ? (prObject[mDetailKey] || "NA") : "NA", 
+                        mDateKey ? (prObject[mDateKey] || "NA") : "NA",    
+                        mQtyKey ? (prObject[mQtyKey] || 0) : 0,       
+                        newestPO && ePoKey ? (newestPO[ePoKey] || "NA") : "NA", 
+                        newestPO && eItemKey ? (newestPO[eItemKey] || "NA") : "NA",              
+                        newestPO && eDateKey ? (newestPO[eDateKey] || "NA") : "NA"       
+                    ]], { origin: `P${rowTarget}` });
+                });
+
+                // Generate and clean download output
+                XLSX.writeFile(workbook, "Generated_Annexure_B.xlsx");
+                printLog("Success! Your Filled Annexure B has been generated and downloaded automatically.", false);
+
+            } catch (error) {
+                printLog(error.message);
+                console.error(error);
+            }
+        }
+
+        function readExcel(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const arr = new Uint8Array(e.target.result);
+                        const wb = XLSX.read(arr, { type: 'array' });
+                        resolve(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]));
+                    } catch (err) {
+                        reject(new Error("Failed parsing Excel sheets structure. Ensure the files are not corrupted."));
+                    }
+                };
+                reader.onerror = () => reject(new Error("File structural reading failure."));
+                reader.readAsArrayBuffer(file);
+            });
+        }
+    </script>
+</body>
+</html>
