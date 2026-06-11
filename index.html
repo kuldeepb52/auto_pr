@@ -1,168 +1,659 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Annexure B Generator</title>
-    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 40px; background: #fdfdfd; color: #333; }
-        .box { border: 1px solid #d3d3d3; padding: 25px; border-radius: 6px; max-width: 550px; background: #ffffff; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .btn { padding: 12px 24px; background-color: #007bff; color: white; border: none; cursor: pointer; border-radius: 4px; font-size: 16px; font-weight: bold; width: 100%; margin-top: 15px; }
-        .btn:hover { background-color: #0056b3; }
-        input[type="file"] { margin-top: 5px; margin-bottom: 15px; display: block; width: 100%; }
-        #msgLog { margin-top: 20px; padding: 15px; border-radius: 4px; display: none; max-width: 550px; font-size: 14px; }
-        .err-style { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        .ok-style { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-    </style>
-</head>
-<body>
 
-    <h2>Annexure B Procurement Justification</h2>
-    
-    <div class="box">
-        <label><strong>1. Upload ZMMMATHIST File:</strong></label>
-        <input type="file" id="mathist" accept=".xlsx, .xls" />
-        
-        <label><strong>2. Upload ME2M File:</strong></label>
-        <input type="file" id="me2m" accept=".xlsx, .xls" />
-        
-        <button class="btn" onclick="runProcess()">Generate & Download Annexure B</button>
-    </div>
 
-    <div id="msgLog"></div>
+Script
 
-    <script>
-        function printLog(text, isError = true) {
-            const container = document.getElementById('msgLog');
-            container.style.display = "block";
-            container.className = isError ? "err-style" : "ok-style";
-            container.innerHTML = isError ? `<strong>Execution Stopped:</strong> ${text}` : text;
-        }
+Main HTML file - single page app for the procurement mapping tool
+index.html
 
-        // Helper to find column key ignoring lowercase/uppercase/spaces
-        function getFuzzyKey(rowObj, searchWord) {
-            const cleanSearch = searchWord.toLowerCase().replace(/[^a-z0-9]/g, '');
-            return Object.keys(rowObj).find(k => {
-                const cleanKey = k.toLowerCase().replace(/[^a-z0-9]/g, '');
-                return cleanKey.includes(cleanSearch);
-            });
-        }
+Core mapping logic JavaScript file - handles all data processing and Excel generation
+javascript
 
-        async function runProcess() {
-            try {
-                const mathistInput = document.getElementById('mathist').files[0];
-                const me2mInput = document.getElementById('me2m').files[0];
+// ============================================================
+// SAP Procurement Annexure Generator — mapping.js
+// ------------------------------------------------------------
+// WHAT THIS FILE DOES (for learning):
+//
+//  1. Reads uploaded Excel files using the SheetJS (XLSX) library.
+//  2. Parses both SAP reports into in-memory JavaScript objects.
+//  3. Applies "mapping logic" — the same rules you used to do by
+//     hand — to produce one row per material.
+//  4. Builds two brand-new Excel workbooks (Annexure A & B) with
+//     proper headers, formatting, and merged cells.
+//  5. Triggers browser downloads for both files.
+// ============================================================
 
-                if (!mathistInput || !me2mInput) { 
-                    printLog("Please make sure both files are attached before generating."); 
-                    return; 
-                }
+// ── State ──────────────────────────────────────────────────
+const state = { me2m: null, zmm: null };
 
-                // 1. Create the Schema Structure natively as an Array instead of relying on a string
-                const workbook = XLSX.utils.book_new();
-                const schemaRows = [
-                    ["ANNEXURE-B : Material Procurement Justification sheet"],
-                    ["XXXXXXXXX- PR: XXXXXXXXXX"],
-                    ["PR No. :XXXXXXXXXX, Date-XXXXXXXXXX", "", "", "Estimated Value : Rs. XXXXXXXXXX/-"],
-                    ["1", "2", "", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "", "18", "19", "20", "21", "22"],
-                    [
-                        "S No.", "Material", "Old Material code", "Material Description", "Population\n(Meter)", 
-                        "Stock Qty", "5 year consumption", "Qty requested", "Normal Life of item (Year)", 
-                        "Last Five Year Consumption", "", "", "", "", "Failure Rate", 
-                        "Pipeline PO", "", "Pipeline PR", "", "", "Last PO No.", "Last PO. Item Sl. No.", "Last PO date", "Justification"
-                    ],
-                    [
-                        "", "", "", "", "", "", "", "", "", 
-                        "Previous FY-4", "Previous FY-3", "Previous FY-2", "Previous FY-1", "Current FY", "", 
-                        "PO No / Sl No.", "Qty", "PRNo. / Sl No.", "PR Date", "Qty"
-                    ]
-                ];
-                
-                const sheet = XLSX.utils.aoa_to_sheet(schemaRows);
-                XLSX.utils.book_append_sheet(workbook, sheet, "Annexure B");
+// ============================================================
+// FILE HANDLING
+// Drag-and-drop and <input> file selection both end up here.
+// ============================================================
 
-                // 2. Read user datasets
-                const mathistData = await readExcel(mathistInput);
-                const me2mData = await readExcel(me2mInput);
+function handleFile(key, input) {
+  const file = input.files[0];
+  if (!file) return;
+  readExcel(key, file);
+}
+function handleDrop(e, key) {
+  e.preventDefault();
+  document.getElementById(`zone-${key}`).classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) readExcel(key, file);
+}
+function handleDrag(e, key) {
+  e.preventDefault();
+  document.getElementById(`zone-${key}`).classList.add('dragover');
+}
+function handleDragLeave(key) {
+  document.getElementById(`zone-${key}`).classList.remove('dragover');
+}
 
-                if (!mathistData.length || !me2mData.length) {
-                    throw new Error("One or both uploaded files do not contain data rows.");
-                }
+// readExcel: uses FileReader to read bytes, then SheetJS to parse.
+function readExcel(key, file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      // XLSX.read converts raw bytes into a "workbook" object.
+      const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+      // sheet_to_json converts the first sheet into an array of row objects.
+      const ws  = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { defval: null });
+      state[key] = rows;
 
-                // Smart Column Discovery
-                const mMatKey = getFuzzyKey(mathistData[0], "material");
-                const mTypeKey = getFuzzyKey(mathistData[0], "doctype") || getFuzzyKey(mathistData[0], "type");
-                const mDetailKey = getFuzzyKey(mathistData[0], "docdetail") || getFuzzyKey(mathistData[0], "detail");
-                const mQtyKey = getFuzzyKey(mathistData[0], "quantity") || getFuzzyKey(mathistData[0], "qty");
-                const mDateKey = getFuzzyKey(mathistData[0], "reqdate") || getFuzzyKey(mathistData[0], "date");
+      // UI feedback
+      const zone = document.getElementById(`zone-${key === 'me2m' ? 'me2m' : 'zmm'}`);
+      zone.classList.add('loaded');
+      document.getElementById(`name-${key === 'me2m' ? 'me2m' : 'zmm'}`).textContent = `✓ ${file.name} (${rows.length} rows)`;
+      checkReady();
+    } catch (err) {
+      alert(`Error reading ${file.name}: ${err.message}`);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
 
-                const eMatKey = getFuzzyKey(me2mData[0], "material");
-                const ePoKey = getFuzzyKey(me2mData[0], "purchasingdocument") || getFuzzyKey(me2mData[0], "po");
-                const eItemKey = getFuzzyKey(me2mData[0], "item");
-                const eDateKey = getFuzzyKey(me2mData[0], "documentdate") || getFuzzyKey(me2mData[0], "date");
+function checkReady() {
+  document.getElementById('btn-gen').disabled = !(state.me2m && state.zmm);
+}
 
-                if (!mMatKey) throw new Error("Could not detect a 'Material' column header inside ZMMMATHIST.");
-                if (!eMatKey) throw new Error("Could not detect a 'Material' column header inside ME2M.");
+// ============================================================
+// LOGGING HELPER
+// ============================================================
+function log(msg, type = 'ok') {
+  const el = document.getElementById('log');
+  el.classList.add('visible');
+  el.innerHTML += `<div class="log-${type}">${msg}</div>`;
+  el.scrollTop = el.scrollHeight;
+}
+function clearLog() {
+  const el = document.getElementById('log');
+  el.innerHTML = '';
+  el.classList.add('visible');
+}
 
-                // Process Unique Materials list
-                const uniqueMaterials = [...new Set(mathistData.map(r => r[mMatKey]))].filter(m => m).sort();
+// ============================================================
+// MAIN GENERATE FUNCTION
+// Called when user clicks "Generate Annexure A & B"
+// ============================================================
+function generate() {
+  clearLog();
+  document.getElementById('downloads').classList.remove('visible');
+  document.getElementById('dl-divider').style.display = 'none';
+  document.getElementById('preview-card').style.display = 'none';
 
-                uniqueMaterials.forEach((materialCode, index) => {
-                    const rowTarget = index + 7; // Insert strictly from Row 7 downwards
-                    
-                    const mSubset = mathistData.filter(r => r[mMatKey] === materialCode);
-                    const me2mSubset = me2mData.filter(r => r[eMatKey] === materialCode);
-                    
-                    let newestPO = null;
-                    if (me2mSubset.length > 0 && eDateKey) {
-                        newestPO = me2mSubset.sort((a, b) => new Date(b[eDateKey]) - new Date(a[eDateKey]))[0];
-                    }
+  log('▶ Starting data processing...', 'info');
 
-                    const prObject = mSubset.find(r => String(r[mTypeKey]).toLowerCase().includes("rqs") || String(r[mTypeKey]).toLowerCase().includes("pr")) || {};
-                    const poObject = mSubset.find(r => String(r[mTypeKey]).toLowerCase().includes("item") || String(r[mTypeKey]).toLowerCase().includes("po")) || {};
+  try {
+    // ── STEP 1: Parse ME2M ─────────────────────────────────
+    log('  [1/6] Parsing ME2M (PO history)...', 'info');
+    const me2m = parseME2M(state.me2m);
+    log(`  ✓ ME2M: ${Object.keys(me2m.lastPO).length} unique materials, ${me2m.pipelinePO.size} with open pipeline PO`);
 
-                    // Fill basic sequential identifiers
-                    XLSX.utils.sheet_add_aoa(sheet, [[index + 1, materialCode]], { origin: `A${rowTarget}` });
+    // ── STEP 2: Parse ZMMMATHIST ───────────────────────────
+    log('  [2/6] Parsing ZMMMATHIST (stock & consumption)...', 'info');
+    const zmm = parseZMM(state.zmm);
+    log(`  ✓ ZMM: ${Object.keys(zmm.stock).length} materials with stock, ${Object.keys(zmm.pr).length} with pipeline PR`);
 
-                    // Populating target mapping columns P through W
-                    XLSX.utils.sheet_add_aoa(sheet, [[
-                        mDetailKey ? (poObject[mDetailKey] || "NA") : "NA", 
-                        mQtyKey ? (poObject[mQtyKey] || 0) : 0,       
-                        mDetailKey ? (prObject[mDetailKey] || "NA") : "NA", 
-                        mDateKey ? (prObject[mDateKey] || "NA") : "NA",    
-                        mQtyKey ? (prObject[mQtyKey] || 0) : 0,       
-                        newestPO && ePoKey ? (newestPO[ePoKey] || "NA") : "NA", 
-                        newestPO && eItemKey ? (newestPO[eItemKey] || "NA") : "NA",              
-                        newestPO && eDateKey ? (newestPO[eDateKey] || "NA") : "NA"       
-                    ]], { origin: `P${rowTarget}` });
-                });
+    // ── STEP 3: Build merged rows ──────────────────────────
+    log('  [3/6] Merging data across both reports...', 'info');
+    const rows = buildRows(me2m, zmm);
+    log(`  ✓ Merged: ${rows.length} material rows ready`);
 
-                // Generate down-stream asset
-                XLSX.writeFile(workbook, "Generated_Annexure_B.xlsx");
-                printLog("Success! Your Filled Annexure B has been generated and downloaded automatically.", false);
+    // ── STEP 4: Build Annexure A ───────────────────────────
+    log('  [4/6] Building Annexure A (Estimation Sheet)...', 'info');
+    const wbA = buildAnnexureA(rows);
+    log('  ✓ Annexure A built');
 
-            } catch (error) {
-                printLog(error.message);
-                console.error(error);
-            }
-        }
+    // ── STEP 5: Build Annexure B ───────────────────────────
+    log('  [5/6] Building Annexure B (Procurement Justification)...', 'info');
+    const wbB = buildAnnexureB(rows);
+    log('  ✓ Annexure B built');
 
-        function readExcel(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    try {
-                        const arr = new Uint8Array(e.target.result);
-                        const wb = XLSX.read(arr, { type: 'array' });
-                        resolve(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]));
-                    } catch (err) {
-                        reject(new Error("Failed parsing Excel sheets structure. Ensure the files are not corrupted."));
-                    }
-                };
-                reader.onerror = () => reject(new Error("File structural reading failure."));
-                reader.readAsArrayBuffer(file);
-            });
-        }
-    </script>
-</body>
-</html>
+    // ── STEP 6: Trigger downloads ──────────────────────────
+    log('  [6/6] Preparing downloads...', 'info');
+    const dlA = workbookToDataURL(wbA);
+    const dlB = workbookToDataURL(wbB);
+
+    document.getElementById('dl-a').href = dlA;
+    document.getElementById('dl-b').href = dlB;
+    document.getElementById('downloads').classList.add('visible');
+    document.getElementById('dl-divider').style.display = 'block';
+
+    // ── Preview table ──────────────────────────────────────
+    renderPreview(rows);
+
+    log(`✅ Done! ${rows.length} materials mapped. Click the download buttons above.`, 'ok');
+
+  } catch (err) {
+    log(`❌ ERROR: ${err.message}`, 'error');
+    console.error(err);
+  }
+}
+
+// ============================================================
+// PARSE ME2M
+// Returns:
+//   lastPO   : { material -> { poNo, poItem, poDate, netPrice, vendor, orderUnit } }
+//   pipelinePO: Set of materials with open/pending PO deliveries
+// ============================================================
+function parseME2M(rows) {
+  // Key insight: ME2M has MULTIPLE rows per material (one per PO line).
+  // We need the MOST RECENT PO per material (highest Document Date).
+
+  const byMaterial = {};
+
+  for (const r of rows) {
+    const mat = clean(r['Material']);
+    if (!mat) continue;
+
+    const date = parseDate(r['Document Date']);
+    if (!date) continue;
+
+    if (!byMaterial[mat] || date > byMaterial[mat].date) {
+      byMaterial[mat] = {
+        date,
+        poNo   : fmtPO(r['Purchasing Document']),
+        poItem : fmtItem(r['Item']),
+        netPrice: toNum(r['Net price']),
+        vendor : clean(r['Name of Vendor']),
+        orderUnit: clean(r['Order Unit']),
+        shortText: clean(r['Short Text']),
+      };
+    }
+  }
+
+  // Pipeline PO: rows where "Still to be delivered (qty)" > 0
+  const pipelinePO = {};
+  for (const r of rows) {
+    const mat = clean(r['Material']);
+    if (!mat) continue;
+    const stillDeliver = toNum(r['Still to be delivered (qty)']);
+    if (stillDeliver > 0) {
+      const poNo   = fmtPO(r['Purchasing Document']);
+      const poItem = fmtItem(r['Item']);
+      const qty    = stillDeliver;
+      if (!pipelinePO[mat]) pipelinePO[mat] = [];
+      pipelinePO[mat].push({ poNo, poItem, qty });
+    }
+  }
+
+  return { lastPO: byMaterial, pipelinePO };
+}
+
+// ============================================================
+// PARSE ZMMMATHIST
+// Returns:
+//   stock  : { material -> { description, matType, stockQty, fy4, fy3, fy2, prevFY, currFY } }
+//   pr     : { material -> [{ prNoSlNo, date, qty }] }
+// ============================================================
+function parseZMM(rows) {
+  const stock = {};
+  const pr    = {};
+
+  for (const r of rows) {
+    const mat  = clean(r['Material']);
+    if (!mat) continue;
+    const docType = clean(r['Doc. Type']);
+
+    if (docType === 'Stock') {
+      // Each material has exactly one "Stock" row — this holds current stock & consumption.
+      stock[mat] = {
+        description: clean(r['Material Description']),
+        matType    : clean(r['Mat. Type']),
+        stockQty   : toNum(r['Stock']),
+        fy4        : toNum(r['Cons-Curr Fin. Yr - 4']),
+        fy3        : toNum(r['Cons-Curr Fin. Yr  -3']),
+        fy2        : toNum(r['Cons-Curr Fin. Yr - 2']),
+        prevFY     : toNum(r['Cons-Prev Fin. Yr.']),
+        currFY     : toNum(r['Cons-Curr Fin. Year']),
+        mrpType    : clean(r['MRP Type']),
+      };
+    } else if (docType === 'PurRqs') {
+      // Pipeline PR: material has one or more "PurRqs" rows.
+      // Doc.Detail format: "0100254655/00740 *" → PR No / PR Item
+      const detail = clean(r['Doc. Detail']) || '';
+      const qty    = toNum(r['Quantity']);
+      const date   = parseDate(r['Req. date']);
+      if (!pr[mat]) pr[mat] = [];
+      pr[mat].push({ detail, qty, date });
+    }
+  }
+
+  return { stock, pr };
+}
+
+// ============================================================
+// BUILD ROWS
+// Merges both datasets into one array of objects,
+// one object per unique material.
+// ============================================================
+function buildRows(me2m, zmm) {
+  // Union of all materials across both sources
+  const allMaterials = new Set([
+    ...Object.keys(me2m.lastPO),
+    ...Object.keys(zmm.stock),
+  ]);
+
+  const rows = [];
+  let sno = 1;
+
+  for (const mat of allMaterials) {
+    const po  = me2m.lastPO[mat]  || {};
+    const st  = zmm.stock[mat]    || {};
+    const prs = zmm.pr[mat]       || [];
+    const pos = me2m.pipelinePO[mat] || [];
+
+    // Description: prefer ZMM (more reliable), fall back to ME2M Short Text
+    const description = st.description || po.shortText || '';
+
+    // 5-year total consumption
+    const fiveYrCons = (st.fy4||0) + (st.fy3||0) + (st.fy2||0) + (st.prevFY||0) + (st.currFY||0);
+
+    // Pipeline PR: combine all into one string for display
+    const pipelinePRStr = prs
+      .filter(p => p.qty > 0)
+      .map(p => `${p.detail} (Qty:${p.qty})`)
+      .join('; ') || '';
+    const pipelinePRDate = prs.length > 0 ? prs[0].date : null;
+    const pipelinePRQty  = prs.reduce((s, p) => s + (p.qty || 0), 0);
+
+    // Pipeline PO
+    const pipelinePOStr = pos
+      .map(p => `${p.poNo}/${p.poItem} (Qty:${p.qty})`)
+      .join('; ') || '';
+    const pipelinePOQty = pos.reduce((s, p) => s + (p.qty || 0), 0);
+
+    rows.push({
+      sno,
+      material    : mat,
+      description,
+      stockQty    : st.stockQty   ?? 0,
+      unit        : po.orderUnit  || 'NO',
+      lastPONo    : po.poNo       || '',
+      lastPOItem  : po.poItem     || '',
+      lastPODate  : po.date       || null,
+      lpp         : po.netPrice   || 0,         // Last Purchase Price
+      estimatedRate: po.netPrice  || 0,         // Default to LPP
+      fiveYrCons,
+      fy4         : st.fy4        || 0,
+      fy3         : st.fy3        || 0,
+      fy2         : st.fy2        || 0,
+      prevFY      : st.prevFY     || 0,
+      currFY      : st.currFY     || 0,
+      pipelinePOStr,
+      pipelinePOQty,
+      pipelinePRStr,
+      pipelinePRDate,
+      pipelinePRQty,
+      matType     : st.matType    || '',
+    });
+    sno++;
+  }
+
+  // Sort by material code for consistency
+  rows.sort((a, b) => a.material.localeCompare(b.material));
+  rows.forEach((r, i) => r.sno = i + 1);
+
+  return rows;
+}
+
+// ============================================================
+// BUILD ANNEXURE A — Estimation Sheet
+// Columns: S No | Material | Description | Population | Stock Qty
+//          | Qty Requested | UOM | Last PO No | Last PO Date
+//          | LPP | Budgetary Offer | Estimated Rate | Total Value
+// ============================================================
+function buildAnnexureA(rows) {
+  const wb = XLSX.utils.book_new();
+
+  // We build the sheet as an array-of-arrays (aoa) for full control.
+  const aoa = [];
+
+  const { prNo, prDate, companyName, ecmNo, estimatedValue } = getHeaderValues();
+
+  // Header rows (rows 1–5 in Excel = index 0–4 in aoa)
+  aoa.push(['ANNEXURE-A : Estimation Sheet']);
+  aoa.push([companyName || 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX']);
+  aoa.push([`PR No. :${prNo || 'XXXXXXXXX'} , Date: ${fmtDateStr(prDate)}`]);
+  aoa.push([`Estimated Value : Rs. ${estimatedValue || 'XXXXXXX'}`]);
+  aoa.push([`PR ECM No. : ${ecmNo || 'XXXXXXXXXXXXXXXXXXXXXXX'}`]);
+
+  // Column headers (row 6 in Excel)
+  aoa.push([
+    'S No.',
+    'Material',
+    'Material Description',
+    'Population',
+    'Stock Qty',
+    'Qty requested',
+    'Unit of Measure',
+    'Last PO No.',
+    'Last PO date',
+    'LPP',
+    'Budgetary offer',
+    'Estimated Rate',
+    'Total Value',
+  ]);
+
+  // Data rows
+  for (const r of rows) {
+    // Total Value = Qty requested * Estimated Rate
+    // Since we don't have "Qty requested" from the SAP reports (it comes from the PR),
+    // we leave it blank for the user to fill in. Total Value uses an Excel formula.
+    aoa.push([
+      r.sno,
+      r.material,
+      r.description,
+      '',                             // Population — user fills
+      r.stockQty,
+      '',                             // Qty requested — user fills (from PR)
+      r.unit,
+      r.lastPONo,
+      r.lastPODate ? fmtExcelDate(r.lastPODate) : '',
+      r.lpp,
+      '',                             // Budgetary offer — user fills
+      r.estimatedRate,
+      '',                             // Total Value — formula: =F*L (row-based)
+    ]);
+  }
+
+  // TOTAL row
+  const dataStart = 7;  // Excel row where data starts (1-indexed)
+  const dataEnd   = dataStart + rows.length - 1;
+  aoa.push([
+    'TOTAL', '', '', '', '', '', '', '', '', '', '', '',
+    `=SUM(M${dataStart}:M${dataEnd})`,
+  ]);
+
+  // Convert to sheet
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+  // Now inject Total Value formulas for each data row
+  for (let i = 0; i < rows.length; i++) {
+    const excelRow = dataStart + i;   // 1-indexed Excel row
+    const cellAddr = `M${excelRow}`;
+    ws[cellAddr] = { f: `F${excelRow}*L${excelRow}`, t: 'n' };
+  }
+
+  // Column widths (approximate)
+  ws['!cols'] = [
+    { wch: 6  },  // S No
+    { wch: 16 },  // Material
+    { wch: 38 },  // Description
+    { wch: 12 },  // Population
+    { wch: 10 },  // Stock Qty
+    { wch: 14 },  // Qty requested
+    { wch: 10 },  // UOM
+    { wch: 16 },  // Last PO No
+    { wch: 14 },  // Last PO Date
+    { wch: 12 },  // LPP
+    { wch: 16 },  // Budgetary offer
+    { wch: 16 },  // Estimated Rate
+    { wch: 14 },  // Total Value
+  ];
+
+  // Merge cells for header rows (A1:M1 through A5:M5)
+  ws['!merges'] = [
+    { s:{r:0,c:0}, e:{r:0,c:12} },
+    { s:{r:1,c:0}, e:{r:1,c:12} },
+    { s:{r:2,c:0}, e:{r:2,c:12} },
+    { s:{r:3,c:0}, e:{r:3,c:12} },
+    { s:{r:4,c:0}, e:{r:4,c:12} },
+  ];
+
+  XLSX.utils.book_append_sheet(wb, ws, 'ESTIMATION');
+  return wb;
+}
+
+// ============================================================
+// BUILD ANNEXURE B — Material Procurement Justification
+// Columns: S No | Material | Old Material code | Description
+//          | Population | Stock Qty | 5yr consumption | Qty requested
+//          | Normal Life | FY-4 | FY-3 | FY-2 | Prev FY | Curr FY
+//          | Failure Rate | Pipeline PO No/SlNo | PO Qty
+//          | Pipeline PR No/SlNo | PR Date | PR Qty
+//          | Last PO No | Last PO Item | Last PO Date | Justification
+// ============================================================
+function buildAnnexureB(rows) {
+  const wb = XLSX.utils.book_new();
+  const aoa = [];
+
+  const { prNo, prDate, companyName, estimatedValue } = getHeaderValues();
+
+  // Header rows
+  aoa.push(['ANNEXURE-B : Material Procurement Justification sheet']);
+  aoa.push([`${companyName || 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'}- PR: ${prNo || 'XXXXXXXXXXXX'}`]);
+  aoa.push([
+    `PR No. :${prNo || 'XXXXXXXXX'}, Date-${fmtDateStr(prDate)}`,
+    '', '',
+    `Estimated Value : Rs. ${estimatedValue || 'XXXXXXXXX'}/-`,
+  ]);
+
+  // Column number row (row 4)
+  aoa.push([1,2,'',3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,'',18,19,20,21,22]);
+
+  // Column header row (row 5) — merged sub-headers below
+  aoa.push([
+    'S No.',
+    'Material',
+    'Old Material code',
+    'Material Description',
+    'Population\n(Meter)',
+    'Stock Qty',
+    '5 year consumption',
+    'Qty requested',
+    'Normal Life of item (Year)',
+    'Last Five Year Consumption','','','','',  // sub-cols: FY-4..CurrFY (merged parent)
+    'Failure Rate',
+    'Pipeline PO ','',
+    'Pipeline PR','','',
+    'Last PO No.',
+    'Last PO. Item Sl. No.',
+    'Last PO date',
+    'Justification',
+  ]);
+
+  // Sub-header row (row 6)
+  aoa.push([
+    '','','','','','','','','',
+    'Previous FY-4','Previous FY-3','Previous FY-2','Previous FY-1','Current FY',
+    '',
+    'PO No / Sl No.','Qty ',
+    'PRNo. / Sl No.','PR Date ','Qty ',
+    '','','','',
+  ]);
+
+  // Data rows (starting at Excel row 7)
+  for (const r of rows) {
+    const fiveYr = r.fy4 + r.fy3 + r.fy2 + r.prevFY + r.currFY;
+    aoa.push([
+      r.sno,
+      r.material,
+      '',                    // Old material code — user fills
+      r.description,
+      '',                    // Population — user fills
+      r.stockQty,
+      fiveYr,
+      '',                    // Qty requested — user fills
+      '',                    // Normal life — user fills
+      r.fy4,
+      r.fy3,
+      r.fy2,
+      r.prevFY,
+      r.currFY,
+      '',                    // Failure rate — user fills
+      r.pipelinePOStr || '',
+      r.pipelinePOQty || '',
+      r.pipelinePRStr || '',
+      r.pipelinePRDate ? fmtExcelDate(r.pipelinePRDate) : '',
+      r.pipelinePRQty || '',
+      r.lastPONo,
+      r.lastPOItem,
+      r.lastPODate ? fmtExcelDate(r.lastPODate) : '',
+      '',                    // Justification — user fills
+    ]);
+  }
+
+  // Footer notes
+  aoa.push(['* This data is to be given where the item is a critical spare as approved by ED (OS) / Minimum Qty. to be maintained at site for area of critical application']);
+  aoa.push(['Note', 'Indented items will be consumed in next two years']);
+  aoa.push(['', 'Certified that there is no NMI/Surplus items in this list.']);
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+  // Column widths
+  ws['!cols'] = [
+    {wch:6},{wch:16},{wch:16},{wch:38},{wch:12},{wch:10},{wch:12},{wch:12},
+    {wch:10},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12},
+    {wch:20},{wch:8},{wch:20},{wch:12},{wch:8},
+    {wch:16},{wch:14},{wch:14},{wch:28},
+  ];
+
+  const numCols = 24;
+  // Merge header rows 1 & 2 across all columns
+  ws['!merges'] = [
+    { s:{r:0,c:0}, e:{r:0,c:numCols-1} },
+    { s:{r:1,c:0}, e:{r:1,c:numCols-1} },
+    // Row 3: PR info (cols 0-2), Est value (cols 3-end)
+    { s:{r:2,c:0}, e:{r:2,c:2} },
+    { s:{r:2,c:3}, e:{r:2,c:numCols-1} },
+    // "Last Five Year Consumption" spans cols 9-13 in header row (index 4)
+    { s:{r:4,c:9}, e:{r:4,c:13} },
+    // "Pipeline PO" spans cols 15-16
+    { s:{r:4,c:15}, e:{r:4,c:16} },
+    // "Pipeline PR" spans cols 17-19
+    { s:{r:4,c:17}, e:{r:4,c:19} },
+    // Footer note spans all columns
+    { s:{r:6+rows.length,c:0}, e:{r:6+rows.length,c:numCols-1} },
+  ];
+
+  XLSX.utils.book_append_sheet(wb, ws, 'MAT JUST');
+  return wb;
+}
+
+// ============================================================
+// RENDER PREVIEW TABLE in the HTML page
+// ============================================================
+function renderPreview(rows) {
+  const tbody = document.getElementById('preview-body');
+  tbody.innerHTML = '';
+  document.getElementById('preview-count').textContent = `${rows.length} materials`;
+
+  for (const r of rows) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${r.sno}</td>
+      <td><code style="font-size:.78rem">${r.material}</code></td>
+      <td>${r.description}</td>
+      <td class="num">${r.stockQty}</td>
+      <td><small>${r.lastPONo}</small></td>
+      <td><small>${r.lastPODate ? fmtExcelDate(r.lastPODate) : '—'}</small></td>
+      <td class="num">${r.lpp ? r.lpp.toLocaleString('en-IN') : '—'}</td>
+      <td class="num">${r.fy4}</td>
+      <td class="num">${r.fy3}</td>
+      <td class="num">${r.fy2}</td>
+      <td class="num">${r.prevFY}</td>
+      <td class="num">${r.currFY}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+
+  document.getElementById('preview-card').style.display = 'block';
+}
+
+// ============================================================
+// UTILITY HELPERS
+// ============================================================
+
+function getHeaderValues() {
+  return {
+    prNo          : document.getElementById('prNo').value.trim(),
+    prDate        : document.getElementById('prDate').value,
+    companyName   : document.getElementById('companyName').value.trim(),
+    ecmNo         : document.getElementById('ecmNo').value.trim(),
+    estimatedValue: document.getElementById('estimatedValue').value.trim(),
+  };
+}
+
+// Convert a workbook to a data URL for <a href> download
+function workbookToDataURL(wb) {
+  const buf  = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  return URL.createObjectURL(blob);
+}
+
+// Parse a value that might be a Date object, ISO string, or serial number
+function parseDate(val) {
+  if (!val) return null;
+  if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
+  const d = new Date(val);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+// Format a date as DD-MM-YYYY for display inside Excel cells
+function fmtExcelDate(d) {
+  if (!d) return '';
+  const date = d instanceof Date ? d : new Date(d);
+  if (isNaN(date.getTime())) return '';
+  const dd = String(date.getDate()).padStart(2,'0');
+  const mm = String(date.getMonth()+1).padStart(2,'0');
+  const yyyy = date.getFullYear();
+  return `${dd}-${mm}-${yyyy}`;
+}
+
+// Format a date for header string display
+function fmtDateStr(val) {
+  if (!val) return 'XXXXXXX';
+  // val from <input type=date> is YYYY-MM-DD
+  const parts = val.split('-');
+  if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+  return val;
+}
+
+// Format PO number — SAP exports as float like 4000348017.0
+function fmtPO(val) {
+  if (!val) return '';
+  const n = Number(val);
+  return isNaN(n) ? String(val).trim() : String(Math.round(n));
+}
+
+// Format PO item — SAP exports as float like 10.0
+function fmtItem(val) {
+  if (!val) return '';
+  const n = Number(val);
+  return isNaN(n) ? String(val).trim() : String(Math.round(n));
+}
+
+// Convert any numeric-ish value to a JS number (strips whitespace, handles null)
+function toNum(val) {
+  if (val === null || val === undefined || val === '') return 0;
+  const n = parseFloat(String(val).replace(/,/g, '').trim());
+  return isNaN(n) ? 0 : n;
+}
+
+// Trim and return a clean string, or '' if null/undefined
+function clean(val) {
+  if (val === null || val === undefined) return '';
+  return String(val).trim();
+}
