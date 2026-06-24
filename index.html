@@ -4,480 +4,96 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SAP Procurement Annexure Generator</title>
-    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-    
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; margin: 30px; background-color: #f5f7fb; color: #333; }
-        .container { max-width: 1100px; margin: 0 auto; }
-        h2 { color: #1e293b; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
-        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; }
-        .card-title { font-weight: bold; font-size: 1.1rem; margin-bottom: 15px; color: #0f172a; display: flex; align-items: center; gap: 8px; }
-        label { display: block; margin-bottom: 5px; font-weight: 500; font-size: 0.9rem; color: #475569; }
-        input[type="text"], input[type="date"] { width: 100%; padding: 8px; margin-bottom: 12px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box; }
-        .dropzone { border: 2px dashed #cbd5e1; padding: 30px 20px; text-align: center; border-radius: 6px; background: #f8fafc; cursor: pointer; transition: all 0.2s ease; margin-bottom: 15px; }
-        .dropzone:hover, .dropzone.dragover { border-color: #3b82f6; background: #eff6ff; }
-        .dropzone.loaded { border-color: #22c55e; background: #f0fdf4; color: #166534; }
-        .btn { width: 100%; padding: 14px; background: #2563eb; color: white; border: none; border-radius: 6px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: background 0.2s; }
-        .btn:hover { background: #1d4ed8; }
-        .btn:disabled { background: #cbd5e1; cursor: not-allowed; }
-        #log { background: #0f172a; color: #38bdf8; padding: 15px; border-radius: 6px; font-family: monospace; font-size: 0.85rem; max-height: 200px; overflow-y: auto; margin-top: 20px; display: none; }
-        #log.visible { display: block; }
-        .log-error { color: #f87171; font-weight: bold; }
-        .log-ok { color: #4ade80; }
-        .log-info { color: #e2e8f0; }
-        .download-box { display: flex; gap: 15px; margin-top: 20px; display: none; }
-        .download-box.visible { display: flex; }
-        .dl-btn { flex: 1; text-align: center; padding: 12px; border-radius: 6px; font-weight: bold; text-decoration: none; color: white; }
-        #dl-a { background: #0284c7; } #dl-a:hover { background: #0369a1; }
-        #dl-b { background: #0d9488; } #dl-b:hover { background: #0f766e; }
-        #preview-card { display: none; margin-top: 20px; overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; }
-        th, td { border: 1px solid #e2e8f0; padding: 8px; text-align: left; }
-        th { background: #f1f5f9; color: #334155; }
-        .num { text-align: right; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 30px; background-color: #f4f6f9; color: #333; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h2 { color: #0056b3; border-bottom: 2px solid #0056b3; padding-bottom: 8px; }
+        .file-group { margin-bottom: 20px; display: flex; flex-direction: column; }
+        label { font-weight: bold; margin-bottom: 5px; }
+        input[type="file"] { padding: 10px; border: 1px dashed #ccc; background: #fafafa; border-radius: 4px; }
+        button { background-color: #28a745; color: white; padding: 12px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 10px; }
+        button:hover { background-color: #218838; }
+        #status { margin-top: 20px; font-weight: bold; color: #555; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>SAP Procurement Annexure Generator Tool</h2>
+    <h2>SAP Procurement Annexure Generator</h2>
+    <p>Upload your raw SAP export sheets to generate standard Annexure outputs.</p>
     
-    <div class="grid">
-        <div class="card">
-            <div class="card-title">📝 Document Header Values</div>
-            <label>Company Name</label>
-            <input type="text" id="companyName" value="NTPC Limited">
-            
-            <label>PR Number</label>
-            <input type="text" id="prNo" placeholder="e.g., 0020034812">
-            
-            <label>PR Date</label>
-            <input type="date" id="prDate">
-            
-            <label>Estimated Value (Rs.)</label>
-            <input type="text" id="estimatedValue" placeholder="e.g., 15,24,500">
-            
-            <label>PR ECM Number</label>
-            <input type="text" id="ecmNo" placeholder="e.g., ECM-2026-991">
-        </div>
-
-        <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
-            <div>
-                <div class="card-title">📂 Upload SAP Reports</div>
-                
-                <label>1. ME2M Report (PO History)</label>
-                <div id="zone-me2m" class="dropzone" ondragover="UI.handleDrag(event, 'me2m')" ondragleave="UI.handleDragLeave('me2m')" ondrop="UI.handleDrop(event, 'me2m')" onclick="document.getElementById('input-me2m').click()">
-                    <span id="name-me2m">Drag & Drop ME2M Excel here or Click to Browse</span>
-                    <input type="file" id="input-me2m" accept=".xlsx, .xls" style="display:none" onchange="UI.handleFile('me2m', this)">
-                </div>
-
-                <label>2. ZMMMATHIST Report (Stock & History)</label>
-                <div id="zone-zmm" class="dropzone" ondragover="UI.handleDrag(event, 'zmm')" ondragleave="UI.handleDragLeave('zmm')" ondrop="UI.handleDrop(event, 'zmm')" onclick="document.getElementById('input-zmm').click()">
-                    <span id="name-zmm">Drag & Drop ZMMMATHIST Excel here or Click to Browse</span>
-                    <input type="file" id="input-zmm" accept=".xlsx, .xls" style="display:none" onchange="UI.handleFile('zmm', this)">
-                </div>
-            </div>
-
-            <button id="btn-gen" class="btn" onclick="App.generate()" disabled>Generate Annexure A & B</button>
-        </div>
+    <div class="file-group">
+        <label for="zmmFile">1. ZMMMATHIST File (.xlsx / .csv)</label>
+        <input type="file" id="zmmFile" accept=".xlsx, .xls, .csv">
     </div>
 
-    <hr id="dl-divider" style="display:none; border: 0; border-top: 1px solid #cbd5e1; margin: 25px 0;">
-    <div id="downloads" class="download-box">
-        <a id="dl-a" class="dl-btn" href="#">📥 Download Annexure A (Estimation)</a>
-        <a id="dl-b" class="dl-btn" href="#">📥 Download Annexure B (Justification)</a>
+    <div class="file-group">
+        <label for="me2mFile">2. ME2M File (.xlsx / .csv)</label>
+        <input type="file" id="me2mFile" accept=".xlsx, .xls, .csv">
     </div>
 
-    <div id="log"></div>
-
-    <div id="preview-card" class="card">
-        <div class="card-title">📊 Calculated Material Preview (<span id="preview-count">0</span>)</div>
-        <table>
-            <thead>
-                <tr>
-                    <th>SNo</th><th>Material</th><th>Description</th><th>Stock</th>
-                    <th>Last PO</th><th>Last PO Date</th><th>LPP (Rs.)</th>
-                    <th>FY-4</th><th>FY-3</th><th>FY-2</th><th>Prev FY</th><th>Curr FY</th>
-                </tr>
-            </thead>
-            <tbody id="preview-body"></tbody>
-        </table>
-    </div>
+    <button id="processBtn">Generate Annexure B</button>
+    
+    <div id="status"></div>
 </div>
 
+<script src="mappingRules.js"></script>
+<script src="processor.js"></script>
 <script>
-// ============================================================================
-// SECTION 2: SCHEMA DEFINITIONS
-// Defines the exact column headers (the "What") for the final output files.
-// ============================================================================
-const SCHEMA = {
-    
-    // Annexure A has a single row of column headers
-    AnnexureA_Headers: [
-        'S No.', 'Material', 'Material Description', 'Population', 'Stock Qty',
-        'Qty requested', 'Unit of Measure', 'Last PO No.', 'Last PO date',
-        'LPP', 'Budgetary offer', 'Estimated Rate', 'Total Value'
-    ],
+    document.getElementById('processBtn').addEventListener('click', async () => {
+        const zmmFile = document.getElementById('zmmFile').files[0];
+        const me2mFile = document.getElementById('me2mFile').files[0];
+        const statusDiv = document.getElementById('status');
 
-    // Annexure B has two rows of column headers (due to merged cells for FY splits)
-    AnnexureB_Headers_Row1: [
-        'S No.', 'Material', 'Old Material code', 'Material Description', 'Population\n(Meter)', 
-        'Stock Qty', '5 year consumption', 'Qty requested', 'Normal Life of item (Year)', 
-        'Last Five Year Consumption', '', '', '', '', 'Failure Rate', 
-        'Pipeline PO ', '', 'Pipeline PR', '', '', 'Last PO No.', 
-        'Last PO. Item Sl. No.', 'Last PO date', 'Justification'
-    ],
-    
-    AnnexureB_Headers_Row2: [
-        '', '', '', '', '', '', '', '', '', 
-        'Previous FY-4', 'Previous FY-3', 'Previous FY-2', 'Previous FY-1', 'Current FY', '', 
-        'PO No / Sl No.', 'Qty ', 'PRNo. / Sl No.', 'PR Date ', 'Qty ', '', '', '', ''
-    ]
-};
-
-
-// ============================================================================
-// SECTION 3: MAPPING RULE BASE
-// Defines exactly how to extract, calculate, or leave blank the data (the "How").
-// ============================================================================
-const RULES = {
-
-    // 3A. SAP Input Column Names (Update here if SAP export columns change)
-    sapColumns: {
-        me2m: {
-            material: 'Material', date: 'Document Date', poNo: 'Purchasing Document',
-            item: 'Item', price: 'Net price', vendor: 'Name of Vendor',
-            unit: 'Order Unit', desc: 'Short Text', pipelineQty: 'Still to be delivered (qty)'
-        },
-        zmm: {
-            material: 'Material', docType: 'Doc. Type', desc: 'Material Description',
-            matType: 'Mat. Type', stock: 'Stock', fy4: 'Cons-Curr Fin. Yr - 4',
-            fy3: 'Cons-Curr Fin. Yr  -3', fy2: 'Cons-Curr Fin. Yr - 2', prevFy: 'Cons-Prev Fin. Yr.',
-            currFy: 'Cons-Curr Fin. Year', prDetail: 'Doc. Detail', prQty: 'Quantity', prDate: 'Req. date'
+        if (!zmmFile) {
+            statusDiv.innerHTML = "<span style='color:red;'>Error: ZMMMATHIST file is mandatory.</span>";
+            return;
         }
-    },
 
-    // 3B. Annexure A Data Mapping Rules
-    // Keys match the Schema strings exactly.
-    mapAnnexureA: (r) => ({
-        'S No.':                r.sno,
-        'Material':             r.material,
-        'Material Description': r.description,
-        'Population':           '',            // Left blank for manual input
-        'Stock Qty':            r.stockQty,
-        'Qty requested':        '',            // Left blank for manual input
-        'Unit of Measure':      r.unit,
-        'Last PO No.':          r.lastPONo,
-        'Last PO date':         Utils.fmtExcelDate(r.lastPODate),
-        'LPP':                  r.lpp,
-        'Budgetary offer':      '',            // Left blank
-        'Estimated Rate':       r.estimatedRate,
-        'Total Value':          ''             // Filled via Excel Formula dynamically later
-    }),
+        statusDiv.innerText = "Parsing input files...";
 
-    // 3C. Annexure B Data Mapping Rules
-    // Keys match the Row 2 headers where applicable, otherwise Row 1.
-    mapAnnexureB: (r) => ({
-        'S No.':                      r.sno,
-        'Material':                   r.material,
-        'Old Material code':          '',
-        'Material Description':       r.description,
-        'Population\n(Meter)':        '',
-        'Stock Qty':                  r.stockQty,
-        '5 year consumption':         (r.fy4 + r.fy3 + r.fy2 + r.prevFY + r.currFY),
-        'Qty requested':              '',
-        'Normal Life of item (Year)': '',
-        'Previous FY-4':              r.fy4,
-        'Previous FY-3':              r.fy3,
-        'Previous FY-2':              r.fy2,
-        'Previous FY-1':              r.prevFY,
-        'Current FY':                 r.currFY,
-        'Failure Rate':               '',
-        'PO No / Sl No.':             r.pipelinePOStr,
-        'Qty (PO)':                   r.pipelinePOQty,    // Unique internal key
-        'PRNo. / Sl No.':             r.pipelinePRStr,
-        'PR Date ':                   Utils.fmtExcelDate(r.pipelinePRDate),
-        'Qty (PR)':                   r.pipelinePRQty,    // Unique internal key
-        'Last PO No.':                r.lastPONo,
-        'Last PO. Item Sl. No.':      r.lastPOItem,
-        'Last PO date':               Utils.fmtExcelDate(r.lastPODate),
-        'Justification':              ''
-    })
-};
-
-
-// ============================================================================
-// SECTION 4: CONTROLLER & EXECUTION LOGIC
-// Handles the app state, parsing SAP files, and generating the actual Excel files.
-// ============================================================================
-const App = {
-    state: { me2m: null, zmm: null },
-
-    generate: function() {
-        UI.clearLog();
-        UI.hideDownloads();
-        UI.log('▶ Starting data processing...', 'info');
-        
         try {
-            UI.log('  [1/6] Parsing ME2M (PO history)...', 'info');
-            const me2m = this.parseME2M(this.state.me2m);
+            // Parse Excel files to JSON objects
+            const zmmData = await parseExcelToJson(zmmFile);
+            const me2mData = me2mFile ? await parseExcelToJson(me2mFile) : [];
 
-            UI.log('  [2/6] Parsing ZMMMATHIST (stock & consumption)...', 'info');
-            const zmm = this.parseZMM(this.state.zmm);
-
-            UI.log('  [3/6] Merging and applying Rules...', 'info');
-            const rows = this.buildUnifiedRows(me2m, zmm);
-
-            UI.log('  [4/6] Generating Schema A...', 'info');
-            const wbA = this.buildAnnexureA_Workbook(rows);
-
-            UI.log('  [5/6] Generating Schema B...', 'info');
-            const wbB = this.buildAnnexureB_Workbook(rows);
-
-            UI.log('  [6/6] Finalizing files...', 'info');
-            UI.showDownloads(Utils.workbookToDataURL(wbA), Utils.workbookToDataURL(wbB));
-            UI.renderPreview(rows);
-            UI.log(`✅ Success! ${rows.length} materials processed.`, 'ok');
-
-        } catch (err) {
-            UI.log(`❌ ERROR: ${err.message}`, 'error');
-            console.error(err);
-        }
-    },
-
-    parseME2M: function(rawRows) {
-        const c = RULES.sapColumns.me2m;
-        const lastPO = {}; 
-        const pipelinePO = {}; 
-
-        for (const r of rawRows) {
-            const mat = Utils.clean(r[c.material]);
-            if (!mat) continue;
+            statusDiv.innerText = "Processing mapping rules...";
             
-            const date = Utils.parseDate(r[c.date]);
-            if (date && (!lastPO[mat] || date > lastPO[mat].date)) {
-                lastPO[mat] = {
-                    date: date, poNo: Utils.fmtNum(r[c.poNo]), poItem: Utils.fmtNum(r[c.item]),
-                    netPrice: Utils.toNum(r[c.price]), vendor: Utils.clean(r[c.vendor]),
-                    orderUnit: Utils.clean(r[c.unit]), shortText: Utils.clean(r[c.desc]),
-                };
-            }
+            // Run our pipeline orchestrator
+            const finalWorkbookData = generateAnnexureBWorkbook(zmmData, me2mData);
 
-            const stillDeliver = Utils.toNum(r[c.pipelineQty]);
-            if (stillDeliver > 0) {
-                if (!pipelinePO[mat]) pipelinePO[mat] = [];
-                pipelinePO[mat].push({ poNo: Utils.fmtNum(r[c.poNo]), poItem: Utils.fmtNum(r[c.item]), qty: stillDeliver });
-            }
-        }
-        return { lastPO, pipelinePO };
-    },
-
-    parseZMM: function(rawRows) {
-        const c = RULES.sapColumns.zmm;
-        const stock = {}; 
-        const pr = {};
-
-        for (const r of rawRows) {
-            const mat = Utils.clean(r[c.material]);
-            if (!mat) continue;
+            statusDiv.innerText = "Generating downloadable Excel workbook...";
             
-            const docType = Utils.clean(r[c.docType]);
-            if (docType === 'Stock') {
-                stock[mat] = {
-                    description: Utils.clean(r[c.desc]), matType: Utils.clean(r[c.matType]),
-                    stockQty: Utils.toNum(r[c.stock]),
-                    fy4: Utils.toNum(r[c.fy4]), fy3: Utils.toNum(r[c.fy3]), fy2: Utils.toNum(r[c.fy2]),
-                    prevFY: Utils.toNum(r[c.prevFy]), currFY: Utils.toNum(r[c.currFy])
-                };
-            } else if (docType === 'PurRqs') {
-                if (!pr[mat]) pr[mat] = [];
-                pr[mat].push({ detail: Utils.clean(r[c.prDetail]), qty: Utils.toNum(r[c.prQty]), date: Utils.parseDate(r[c.prDate]) });
-            }
+            // Convert to Excel workbook using SheetJS and trigger download
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(finalWorkbookData);
+            XLSX.utils.book_append_sheet(wb, ws, "Annexure B");
+            XLSX.writeFile(wb, "Annexure_B_Output.xlsx");
+
+            statusDiv.innerHTML = "<span style='color:green;'>Success! File downloaded.</span>";
+        } catch (error) {
+            console.error(error);
+            statusDiv.innerHTML = `<span style='color:red;'>Error processing files: ${error.message}</span>`;
         }
-        return { stock, pr };
-    },
+    });
 
-    buildUnifiedRows: function(me2m, zmm) {
-        const allMaterials = new Set([...Object.keys(me2m.lastPO), ...Object.keys(zmm.stock)]);
-        const rows = [];
-        let sno = 1;
-        
-        for (const mat of allMaterials) {
-            const po = me2m.lastPO[mat] || {};
-            const st = zmm.stock[mat] || {};
-            const prs = zmm.pr[mat] || [];
-            const pos = me2m.pipelinePO[mat] || [];
-
-            rows.push({
-                sno: sno++,
-                material: mat,
-                description: st.description || po.shortText || '',
-                stockQty: st.stockQty ?? 0,
-                unit: po.orderUnit || 'NO',
-                lastPONo: po.poNo || '',
-                lastPOItem: po.poItem || '',
-                lastPODate: po.date || null,
-                lpp: po.netPrice || 0,
-                estimatedRate: po.netPrice || 0,
-                fy4: st.fy4 || 0, fy3: st.fy3 || 0, fy2: st.fy2 || 0, prevFY: st.prevFY || 0, currFY: st.currFY || 0,
-                pipelinePOStr: pos.map(p => `${p.poNo}/${p.poItem} (Qty:${p.qty})`).join('; ') || '',
-                pipelinePOQty: pos.reduce((s, p) => s + (p.qty || 0), 0) || '',
-                pipelinePRStr: prs.filter(p => p.qty > 0).map(p => `${p.detail} (Qty:${p.qty})`).join('; ') || '',
-                pipelinePRDate: prs.length > 0 ? prs[0].date : null,
-                pipelinePRQty: prs.reduce((s, p) => s + (p.qty || 0), 0) || '',
-            });
-        }
-        rows.sort((a, b) => a.material.localeCompare(b.material));
-        rows.forEach((r, i) => r.sno = i + 1); 
-        return rows;
-    },
-
-    buildAnnexureA_Workbook: function(unifiedRows) {
-        const wb = XLSX.utils.book_new();
-        const aoa = [];
-        const h = UI.getHeaderValues();
-
-        // 1. Title Header Rows
-        aoa.push(['ANNEXURE-A : Estimation Sheet']);
-        aoa.push([h.company]);
-        aoa.push([`PR No. :${h.prNo} , Date: ${h.prDate}`]);
-        aoa.push([`Estimated Value : Rs. ${h.estVal}`]);
-        aoa.push([`PR ECM No. : ${h.ecm}`]);
-        
-        // 2. Inject Schema
-        aoa.push(SCHEMA.AnnexureA_Headers);
-
-        // 3. Inject Data via Rules
-        for (const r of unifiedRows) {
-            const mapped = RULES.mapAnnexureA(r);
-            // Convert mapped object back to array based on Schema order
-            const rowArray = SCHEMA.AnnexureA_Headers.map(col => mapped[col]);
-            aoa.push(rowArray);
-        }
-
-        // 4. Excel Logic (Totals & Formulas)
-        const dataStart = 7; 
-        const dataEnd = dataStart + unifiedRows.length - 1;
-        const totalRow = new Array(SCHEMA.AnnexureA_Headers.length).fill('');
-        totalRow[0] = 'TOTAL';
-        totalRow[SCHEMA.AnnexureA_Headers.length - 1] = `=SUM(M${dataStart}:M${dataEnd})`; 
-        aoa.push(totalRow);
-
-        const ws = XLSX.utils.aoa_to_sheet(aoa);
-        
-        // Add Dynamic line-item formulas for Total Value (Qty * Est Rate)
-        for (let i = 0; i < unifiedRows.length; i++) {
-            ws[`M${dataStart + i}`] = { f: `F${dataStart + i}*L${dataStart + i}`, t: 'n' };
-        }
-
-        ws['!cols'] = [{wch:6},{wch:16},{wch:38},{wch:12},{wch:10},{wch:14},{wch:10},{wch:16},{wch:14},{wch:12},{wch:16},{wch:16},{wch:14}];
-        ws['!merges'] = [{s:{r:0,c:0},e:{r:0,c:12}},{s:{r:1,c:0},e:{r:1,c:12}},{s:{r:2,c:0},e:{r:2,c:12}},{s:{r:3,c:0},e:{r:3,c:12}},{s:{r:4,c:0},e:{r:4,c:12}}];
-
-        XLSX.utils.book_append_sheet(wb, ws, 'ESTIMATION');
-        return wb;
-    },
-
-    buildAnnexureB_Workbook: function(unifiedRows) {
-        const wb = XLSX.utils.book_new();
-        const aoa = [];
-        const h = UI.getHeaderValues();
-
-        // 1. Title Header Rows
-        aoa.push(['ANNEXURE-B : Material Procurement Justification sheet']);
-        aoa.push([`${h.company}- PR: ${h.prNo}`]);
-        aoa.push([`PR No. :${h.prNo}, Date-${h.prDate}`, '', '', `Estimated Value : Rs. ${h.estVal}/-`]);
-        aoa.push(Array.from({length: SCHEMA.AnnexureB_Headers_Row1.length}, (_, i) => i + 1));
-        
-        // 2. Inject Schema
-        aoa.push(SCHEMA.AnnexureB_Headers_Row1);
-        aoa.push(SCHEMA.AnnexureB_Headers_Row2);
-
-        // 3. Inject Data via Rules
-        for (const r of unifiedRows) {
-            const mapped = RULES.mapAnnexureB(r);
-            // Build array manually mapping to the complex dual-header schema
-            aoa.push([
-                mapped['S No.'], mapped['Material'], mapped['Old Material code'], mapped['Material Description'], 
-                mapped['Population\n(Meter)'], mapped['Stock Qty'], mapped['5 year consumption'], mapped['Qty requested'], 
-                mapped['Normal Life of item (Year)'], mapped['Previous FY-4'], mapped['Previous FY-3'], 
-                mapped['Previous FY-2'], mapped['Previous FY-1'], mapped['Current FY'], mapped['Failure Rate'], 
-                mapped['PO No / Sl No.'], mapped['Qty (PO)'], mapped['PRNo. / Sl No.'], mapped['PR Date '], 
-                mapped['Qty (PR)'], mapped['Last PO No.'], mapped['Last PO. Item Sl. No.'], mapped['Last PO date'], 
-                mapped['Justification']
-            ]);
-        }
-
-        // 4. Footer Logic
-        aoa.push(['* This data is to be given where the item is a critical spare as approved by ED (OS)']);
-        aoa.push(['Note', 'Indented items will be consumed in next two years']);
-        aoa.push(['', 'Certified that there is no NMI/Surplus items in this list.']);
-        
-        const ws = XLSX.utils.aoa_to_sheet(aoa);
-        
-        const numCols = SCHEMA.AnnexureB_Headers_Row1.length;
-        ws['!cols'] = [{wch:6},{wch:16},{wch:16},{wch:38},{wch:12},{wch:10},{wch:12},{wch:12},{wch:10},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12},{wch:20},{wch:8},{wch:20},{wch:12},{wch:8},{wch:16},{wch:14},{wch:14},{wch:28}];
-        ws['!merges'] = [
-            { s:{r:0,c:0}, e:{r:0,c:numCols-1} }, { s:{r:1,c:0}, e:{r:1,c:numCols-1} },
-            { s:{r:2,c:0}, e:{r:2,c:2} }, { s:{r:2,c:3}, e:{r:2,c:numCols-1} },
-            { s:{r:4,c:9}, e:{r:4,c:13} }, { s:{r:4,c:15}, e:{r:4,c:16} }, { s:{r:4,c:17}, e:{r:4,c:19} }, 
-            { s:{r:6+unifiedRows.length,c:0}, e:{r:6+unifiedRows.length,c:numCols-1} } 
-        ];
-
-        XLSX.utils.book_append_sheet(wb, ws, 'MAT JUST');
-        return wb;
+    // Helper utility to convert uploaded files to clean JSON arrays
+    function parseExcelToJson(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+                resolve(json);
+            };
+            reader.onerror = (err) => reject(err);
+            reader.readAsArrayBuffer(file);
+        });
     }
-};
-
-// --- Helper Functions for DOM and Math ---
-const UI = {
-    handleFile: (key, input) => { if(input.files[0]) UI.readExcel(key, input.files[0]); },
-    handleDrop: (e, key) => { e.preventDefault(); document.getElementById(`zone-${key}`).classList.remove('dragover'); if(e.dataTransfer.files[0]){ document.getElementById(`input-${key}`).files = e.dataTransfer.files; UI.readExcel(key, e.dataTransfer.files[0]); }},
-    handleDrag: (e, key) => { e.preventDefault(); document.getElementById(`zone-${key}`).classList.add('dragover'); },
-    handleDragLeave: (key) => { document.getElementById(`zone-${key}`).classList.remove('dragover'); },
-    readExcel: (key, file) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
-            App.state[key] = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: null });
-            document.getElementById(`zone-${key}`).classList.add('loaded');
-            document.getElementById(`name-${key}`).textContent = `✓ ${file.name} (${App.state[key].length} rows)`;
-            document.getElementById('btn-gen').disabled = !(App.state.me2m && App.state.zmm);
-        };
-        reader.readAsArrayBuffer(file);
-    },
-    getHeaderValues: () => ({
-        company: document.getElementById('companyName').value.trim() || 'XXXXXXX',
-        prNo: document.getElementById('prNo').value.trim() || 'XXXXXXX',
-        prDate: Utils.fmtDateStr(document.getElementById('prDate').value),
-        estVal: document.getElementById('estimatedValue').value.trim() || 'XXXXXXX',
-        ecm: document.getElementById('ecmNo').value.trim() || 'XXXXXXX'
-    }),
-    log: (msg, type) => { const el = document.getElementById('log'); el.classList.add('visible'); el.innerHTML += `<div class="log-${type}">${msg}</div>`; el.scrollTop = el.scrollHeight; },
-    clearLog: () => { document.getElementById('log').innerHTML = ''; },
-    hideDownloads: () => { document.getElementById('downloads').classList.remove('visible'); document.getElementById('dl-divider').style.display = 'none'; document.getElementById('preview-card').style.display = 'none'; },
-    showDownloads: (urlA, urlB) => {
-        document.getElementById('dl-a').href = urlA; document.getElementById('dl-a').download = "Annexure_A.xlsx";
-        document.getElementById('dl-b').href = urlB; document.getElementById('dl-b').download = "Annexure_B.xlsx";
-        document.getElementById('downloads').classList.add('visible'); document.getElementById('dl-divider').style.display = 'block';
-    },
-    renderPreview: (rows) => {
-        const tbody = document.getElementById('preview-body'); tbody.innerHTML = '';
-        document.getElementById('preview-count').textContent = `${rows.length} materials`;
-        rows.forEach(r => tbody.innerHTML += `<tr><td>${r.sno}</td><td><code>${r.material}</code></td><td>${r.description}</td><td class="num">${r.stockQty}</td><td><small>${r.lastPONo||'—'}</small></td><td><small>${Utils.fmtExcelDate(r.lastPODate)||'—'}</small></td><td class="num">${r.lpp?r.lpp.toLocaleString('en-IN'):'—'}</td><td class="num">${r.fy4}</td><td class="num">${r.fy3}</td><td class="num">${r.fy2}</td><td class="num">${r.prevFY}</td><td class="num">${r.currFY}</td></tr>`);
-        document.getElementById('preview-card').style.display = 'block';
-    }
-};
-
-const Utils = {
-    clean: (v) => (v === null || v === undefined) ? '' : String(v).trim(),
-    toNum: (v) => { if (!v) return 0; const n = parseFloat(String(v).replace(/,/g, '').trim()); return isNaN(n) ? 0 : n; },
-    parseDate: (v) => { if (!v) return null; const d = new Date(v); return isNaN(d.getTime()) ? null : d; },
-    fmtExcelDate: (d) => { if (!d) return ''; const date = new Date(d); return isNaN(date.getTime()) ? '' : `${String(date.getDate()).padStart(2,'0')}-${String(date.getMonth()+1).padStart(2,'0')}-${date.getFullYear()}`; },
-    fmtDateStr: (v) => { if (!v) return 'XXXXXXX'; const p = v.split('-'); return p.length === 3 ? `${p[2]}-${p[1]}-${p[0]}` : v; },
-    fmtNum: (v) => { if (!v) return ''; const n = Number(v); return isNaN(n) ? String(v).trim() : String(Math.round(n)); },
-    workbookToDataURL: (wb) => URL.createObjectURL(new Blob([XLSX.write(wb, { bookType: 'xlsx', type: 'array' })], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }))
-};
 </script>
 </body>
 </html>
