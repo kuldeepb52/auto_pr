@@ -1,14 +1,106 @@
-// THE NEW FORMATTING ENGINE
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAP Procurement Annexure Generator</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 30px; background-color: #f4f6f9; color: #333; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h2 { color: #0056b3; border-bottom: 2px solid #0056b3; padding-bottom: 8px; }
+        .file-group { margin-bottom: 20px; display: flex; flex-direction: column; }
+        label { font-weight: bold; margin-bottom: 5px; }
+        input[type="file"] { padding: 10px; border: 1px dashed #ccc; background: #fafafa; border-radius: 4px; }
+        button { background-color: #28a745; color: white; padding: 12px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 10px; }
+        button:hover { background-color: #218838; }
+        #status { margin-top: 20px; font-weight: bold; color: #555; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>SAP Procurement Annexure Generator</h2>
+    <p>Upload your raw SAP export sheets to generate standard Annexure outputs.</p>
+    
+    <div class="file-group">
+        <label for="zmmFile">1. ZMMMATHIST File (.xlsx / .csv)</label>
+        <input type="file" id="zmmFile" accept=".xlsx, .xls, .csv">
+    </div>
+
+    <div class="file-group">
+        <label for="me2mFile">2. ME2M File (.xlsx / .csv)</label>
+        <input type="file" id="me2mFile" accept=".xlsx, .xls, .csv">
+    </div>
+
+    <button id="processBtn">Generate Formatted Annexure B</button>
+    
+    <div id="status"></div>
+</div>
+
+<script src="mappingRules.js"></script>
+<script src="processor.js"></script>
+<script>
+    document.getElementById('processBtn').addEventListener('click', async () => {
+        const zmmFile = document.getElementById('zmmFile').files[0];
+        const me2mFile = document.getElementById('me2mFile').files[0];
+        const statusDiv = document.getElementById('status');
+
+        if (!zmmFile) {
+            statusDiv.innerHTML = "<span style='color:red;'>Error: ZMMMATHIST file is mandatory.</span>";
+            return;
+        }
+
+        statusDiv.innerText = "Parsing input files...";
+
+        try {
+            // Read raw data
+            const zmmData = await parseExcelToJson(zmmFile);
+            const me2mData = me2mFile ? await parseExcelToJson(me2mFile) : [];
+
+            statusDiv.innerText = "Processing mapping rules...";
+            
+            // Run logic engine
+            const finalDataArray = generateAnnexureBWorkbook(zmmData, me2mData);
+
+            statusDiv.innerText = "Applying schema formatting and borders...";
+            
+            // Export with formatting
+            await exportFormattedExcel(finalDataArray);
+
+            statusDiv.innerHTML = "<span style='color:green;'>Success! Formatted file downloaded.</span>";
+        } catch (error) {
+            console.error(error);
+            statusDiv.innerHTML = `<span style='color:red;'>Error processing files: ${error.message}</span>`;
+        }
+    });
+
+    // Helper utility for parsing
+    function parseExcelToJson(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+                resolve(json);
+            };
+            reader.onerror = (err) => reject(err);
+            reader.readAsArrayBuffer(file);
+        });
+    }
+
+    // THE NEW FORMATTING ENGINE
     async function exportFormattedExcel(dataArray) {
         const workbook = new ExcelJS.Workbook();
         const sheet = workbook.addWorksheet("Annexure B");
 
         // 1. Write the raw array data into the sheet
         sheet.addRows(dataArray);
-
-        // Calculate where the footers ended up
-        const totalRows = sheet.rowCount;
-        const footerStartRow = totalRows - 2;
 
         // 2. Apply Custom Merges for your specific schema
         sheet.mergeCells('A1:W1'); // Main Title
@@ -25,35 +117,21 @@
         sheet.mergeCells('Q5:R5'); // Pipeline PO
         sheet.mergeCells('S5:T5'); // Pipeline PR
 
-        // Merge cells for the new footers
-        sheet.mergeCells(`A${footerStartRow}:W${footerStartRow}`);         // Asterisk note
-        sheet.mergeCells(`B${footerStartRow + 1}:W${footerStartRow + 1}`); // Note 1
-        sheet.mergeCells(`B${footerStartRow + 2}:W${footerStartRow + 2}`); // Note 2
-
         // 3. Apply Borders, Fonts, and Alignment
         sheet.eachRow((row, rowNumber) => {
-            row.eachCell((cell, colNumber) => {
+            row.eachCell((cell) => {
+                // Draw borders around everything
+                cell.border = {
+                    top: {style:'thin'}, left: {style:'thin'}, 
+                    bottom: {style:'thin'}, right: {style:'thin'}
+                };
                 
-                // Format Headers and Data Rows (Grid style)
-                if (rowNumber < footerStartRow) {
-                    cell.border = {
-                        top: {style:'thin'}, left: {style:'thin'}, 
-                        bottom: {style:'thin'}, right: {style:'thin'}
-                    };
-                    cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+                // Center align and wrap text
+                cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
 
-                    // Bold the headers (Rows 1 to 6)
-                    if (rowNumber <= 6) {
-                        cell.font = { bold: true };
-                    }
-                } 
-                // Format Footer Rows (Clean style)
-                else {
-                    cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
-                    // Bold the word "Note" which is in Column 1 (A) of the second footer row
-                    if (rowNumber === footerStartRow + 1 && colNumber === 1) {
-                        cell.font = { bold: true };
-                    }
+                // Bold the headers (Rows 1 to 6)
+                if (rowNumber <= 6) {
+                    cell.font = { bold: true };
                 }
             });
         });
@@ -67,3 +145,6 @@
         const buffer = await workbook.xlsx.writeBuffer();
         saveAs(new Blob([buffer]), "Annexure_B_Formatted.xlsx");
     }
+</script>
+</body>
+</html>
