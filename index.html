@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SAP Procurement Annexure Generator</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 30px; background-color: #f4f6f9; color: #333; }
         .container { max-width: 800px; margin: auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
@@ -33,7 +35,7 @@
         <input type="file" id="me2mFile" accept=".xlsx, .xls, .csv">
     </div>
 
-    <button id="processBtn">Generate Annexure B</button>
+    <button id="processBtn">Generate Formatted Annexure B</button>
     
     <div id="status"></div>
 </div>
@@ -54,31 +56,28 @@
         statusDiv.innerText = "Parsing input files...";
 
         try {
-            // Parse Excel files to JSON objects
+            // Read raw data
             const zmmData = await parseExcelToJson(zmmFile);
             const me2mData = me2mFile ? await parseExcelToJson(me2mFile) : [];
 
             statusDiv.innerText = "Processing mapping rules...";
             
-            // Run our pipeline orchestrator
-            const finalWorkbookData = generateAnnexureBWorkbook(zmmData, me2mData);
+            // Run logic engine
+            const finalDataArray = generateAnnexureBWorkbook(zmmData, me2mData);
 
-            statusDiv.innerText = "Generating downloadable Excel workbook...";
+            statusDiv.innerText = "Applying schema formatting and borders...";
             
-            // Convert to Excel workbook using SheetJS and trigger download
-            const wb = XLSX.utils.book_new();
-            const ws = XLSX.utils.aoa_to_sheet(finalWorkbookData);
-            XLSX.utils.book_append_sheet(wb, ws, "Annexure B");
-            XLSX.writeFile(wb, "Annexure_B_Output.xlsx");
+            // Export with formatting
+            await exportFormattedExcel(finalDataArray);
 
-            statusDiv.innerHTML = "<span style='color:green;'>Success! File downloaded.</span>";
+            statusDiv.innerHTML = "<span style='color:green;'>Success! Formatted file downloaded.</span>";
         } catch (error) {
             console.error(error);
             statusDiv.innerHTML = `<span style='color:red;'>Error processing files: ${error.message}</span>`;
         }
     });
 
-    // Helper utility to convert uploaded files to clean JSON arrays
+    // Helper utility for parsing
     function parseExcelToJson(file) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -93,6 +92,58 @@
             reader.onerror = (err) => reject(err);
             reader.readAsArrayBuffer(file);
         });
+    }
+
+    // THE NEW FORMATTING ENGINE
+    async function exportFormattedExcel(dataArray) {
+        const workbook = new ExcelJS.Workbook();
+        const sheet = workbook.addWorksheet("Annexure B");
+
+        // 1. Write the raw array data into the sheet
+        sheet.addRows(dataArray);
+
+        // 2. Apply Custom Merges for your specific schema
+        sheet.mergeCells('A1:W1'); // Main Title
+        sheet.mergeCells('A2:W2'); // Subtitle
+        sheet.mergeCells('A3:E3'); // PR No & Date
+        sheet.mergeCells('F3:W3'); // Value of Indent
+
+        // Vertical merges for standalone headers (Row 5 & 6)
+        const verticalCols = ['A','B','C','D','E','F','G','H','I','J','P','U','V','W'];
+        verticalCols.forEach(col => sheet.mergeCells(`${col}5:${col}6`));
+
+        // Horizontal merges for grouped headers
+        sheet.mergeCells('K5:O5'); // Actual Consumption in last 5 Years
+        sheet.mergeCells('Q5:R5'); // Pipeline PO
+        sheet.mergeCells('S5:T5'); // Pipeline PR
+
+        // 3. Apply Borders, Fonts, and Alignment
+        sheet.eachRow((row, rowNumber) => {
+            row.eachCell((cell) => {
+                // Draw borders around everything
+                cell.border = {
+                    top: {style:'thin'}, left: {style:'thin'}, 
+                    bottom: {style:'thin'}, right: {style:'thin'}
+                };
+                
+                // Center align and wrap text
+                cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+
+                // Bold the headers (Rows 1 to 6)
+                if (rowNumber <= 6) {
+                    cell.font = { bold: true };
+                }
+            });
+        });
+
+        // 4. Adjust Column Widths so it looks clean upon opening
+        sheet.columns.forEach(col => { col.width = 12; });
+        sheet.getColumn('D').width = 35; // Item Description needs more space
+        sheet.getColumn('W').width = 35; // Justification needs more space
+
+        // 5. Trigger the download
+        const buffer = await workbook.xlsx.writeBuffer();
+        saveAs(new Blob([buffer]), "Annexure_B_Formatted.xlsx");
     }
 </script>
 </body>
