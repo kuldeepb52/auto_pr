@@ -2,71 +2,149 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Annexure B Generator</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAP Procurement Annexure Generator</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 30px; background-color: #f4f6f9; color: #333; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h2 { color: #0056b3; border-bottom: 2px solid #0056b3; padding-bottom: 8px; }
+        .file-group { margin-bottom: 20px; display: flex; flex-direction: column; }
+        label { font-weight: bold; margin-bottom: 5px; }
+        input[type="file"] { padding: 10px; border: 1px dashed #ccc; background: #fafafa; border-radius: 4px; }
+        button { background-color: #28a745; color: white; padding: 12px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 10px; }
+        button:hover { background-color: #218838; }
+        #status { margin-top: 20px; font-weight: bold; color: #555; }
+    </style>
 </head>
 <body>
-    <h2>Annexure B Generator</h2>
-    <input type="file" id="zmmFile" accept=".xlsx, .csv">
-    <input type="file" id="me2mFile" accept=".xlsx, .csv">
-    <button id="processBtn">Generate Formatted Annexure B</button>
-    <div id="status"></div>
 
-    <script src="mappingRules.js"></script>
-    <script src="processor.js"></script>
-    <script>
-        document.getElementById('processBtn').addEventListener('click', async () => {
-            const zmmFile = document.getElementById('zmmFile').files[0];
-            const me2mFile = document.getElementById('me2mFile').files[0];
-            const zmmData = await parseFile(zmmFile);
-            const me2mData = me2mFile ? await parseFile(me2mFile) : [];
-            const dataArray = generateAnnexureBWorkbook(zmmData, me2mData);
-            await exportFormattedExcel(dataArray);
+<div class="container">
+    <h2>SAP Procurement Annexure Generator</h2>
+    <p>Upload your raw SAP export sheets to generate standard Annexure outputs.</p>
+    
+    <div class="file-group">
+        <label for="zmmFile">1. ZMMMATHIST File (.xlsx / .csv)</label>
+        <input type="file" id="zmmFile" accept=".xlsx, .xls, .csv">
+    </div>
+
+    <div class="file-group">
+        <label for="me2mFile">2. ME2M File (.xlsx / .csv)</label>
+        <input type="file" id="me2mFile" accept=".xlsx, .xls, .csv">
+    </div>
+
+    <button id="processBtn">Generate Formatted Annexure B</button>
+    
+    <div id="status"></div>
+</div>
+
+<script src="mappingRules.js"></script>
+<script src="processor.js"></script>
+<script>
+    document.getElementById('processBtn').addEventListener('click', async () => {
+        const zmmFile = document.getElementById('zmmFile').files[0];
+        const me2mFile = document.getElementById('me2mFile').files[0];
+        const statusDiv = document.getElementById('status');
+
+        if (!zmmFile) {
+            statusDiv.innerHTML = "<span style='color:red;'>Error: ZMMMATHIST file is mandatory.</span>";
+            return;
+        }
+
+        statusDiv.innerText = "Parsing input files...";
+
+        try {
+            // Read raw data
+            const zmmData = await parseExcelToJson(zmmFile);
+            const me2mData = me2mFile ? await parseExcelToJson(me2mFile) : [];
+
+            statusDiv.innerText = "Processing mapping rules...";
+            
+            // Run logic engine
+            const finalDataArray = generateAnnexureBWorkbook(zmmData, me2mData);
+
+            statusDiv.innerText = "Applying schema formatting and borders...";
+            
+            // Export with formatting
+            await exportFormattedExcel(finalDataArray);
+
+            statusDiv.innerHTML = "<span style='color:green;'>Success! Formatted file downloaded.</span>";
+        } catch (error) {
+            console.error(error);
+            statusDiv.innerHTML = `<span style='color:red;'>Error processing files: ${error.message}</span>`;
+        }
+    });
+
+    // Helper utility for parsing
+    function parseExcelToJson(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+                resolve(json);
+            };
+            reader.onerror = (err) => reject(err);
+            reader.readAsArrayBuffer(file);
+        });
+    }
+
+    // THE NEW FORMATTING ENGINE
+    async function exportFormattedExcel(dataArray) {
+        const workbook = new ExcelJS.Workbook();
+        const sheet = workbook.addWorksheet("Annexure B");
+
+        // 1. Write the raw array data into the sheet
+        sheet.addRows(dataArray);
+
+        // 2. Apply Custom Merges for your specific schema
+        sheet.mergeCells('A1:W1'); // Main Title
+        sheet.mergeCells('A2:W2'); // Subtitle
+        sheet.mergeCells('A3:E3'); // PR No & Date
+        sheet.mergeCells('F3:W3'); // Value of Indent
+
+        // Vertical merges for standalone headers (Row 5 & 6)
+        const verticalCols = ['A','B','C','D','E','F','G','H','I','J','P','U','V','W'];
+        verticalCols.forEach(col => sheet.mergeCells(`${col}5:${col}6`));
+
+        // Horizontal merges for grouped headers
+        sheet.mergeCells('K5:O5'); // Actual Consumption in last 5 Years
+        sheet.mergeCells('Q5:R5'); // Pipeline PO
+        sheet.mergeCells('S5:T5'); // Pipeline PR
+
+        // 3. Apply Borders, Fonts, and Alignment
+        sheet.eachRow((row, rowNumber) => {
+            row.eachCell((cell) => {
+                // Draw borders around everything
+                cell.border = {
+                    top: {style:'thin'}, left: {style:'thin'}, 
+                    bottom: {style:'thin'}, right: {style:'thin'}
+                };
+                
+                // Center align and wrap text
+                cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+
+                // Bold the headers (Rows 1 to 6)
+                if (rowNumber <= 6) {
+                    cell.font = { bold: true };
+                }
+            });
         });
 
-        async function parseFile(file) {
-            const reader = new FileReader();
-            return new Promise(resolve => {
-                reader.onload = (e) => {
-                    const workbook = XLSX.read(e.target.result, { type: 'array' });
-                    resolve(XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "" }));
-                };
-                reader.readAsArrayBuffer(file);
-            });
-        }
+        // 4. Adjust Column Widths so it looks clean upon opening
+        sheet.columns.forEach(col => { col.width = 12; });
+        sheet.getColumn('D').width = 35; // Item Description needs more space
+        sheet.getColumn('W').width = 35; // Justification needs more space
 
-        async function exportFormattedExcel(dataArray) {
-            const workbook = new ExcelJS.Workbook();
-            const sheet = workbook.addWorksheet("Annexure B");
-            sheet.addRows(dataArray);
-            
-            // Merges
-            sheet.mergeCells('A1:W1'); sheet.mergeCells('A2:W2');
-            sheet.mergeCells('A3:E3'); sheet.mergeCells('F3:W3');
-            ['A','B','C','D','E','F','G','H','I','J','P','U','V','W'].forEach(c => sheet.mergeCells(`${c}5:${c}6`));
-            sheet.mergeCells('K5:O5'); sheet.mergeCells('Q5:R5'); sheet.mergeCells('S5:T5');
-            
-            const total = sheet.rowCount;
-            sheet.mergeCells(`A${total-2}:W${total-2}`);
-            sheet.mergeCells(`B${total-1}:W${total-1}`);
-            sheet.mergeCells(`B${total}:W${total}`);
-
-            sheet.eachRow((row, rN) => {
-                row.eachCell((cell) => {
-                    if (rN < total - 2) {
-                        cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
-                        cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-                        if (rN <= 6) cell.font = { bold: true };
-                    } else {
-                        cell.alignment = { vertical: 'middle', horizontal: 'left' };
-                    }
-                });
-            });
-            const buffer = await workbook.xlsx.writeBuffer();
-            saveAs(new Blob([buffer]), "Annexure_B.xlsx");
-        }
-    </script>
+        // 5. Trigger the download
+        const buffer = await workbook.xlsx.writeBuffer();
+        saveAs(new Blob([buffer]), "Annexure_B_Formatted.xlsx");
+    }
+</script>
 </body>
 </html>
