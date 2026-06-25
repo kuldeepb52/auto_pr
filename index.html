@@ -36,7 +36,6 @@
     </div>
 
     <button id="processBtn">Generate Formatted Annexure B</button>
-    
     <div id="status"></div>
 </div>
 
@@ -56,18 +55,13 @@
         statusDiv.innerText = "Parsing input files...";
 
         try {
-            // Read raw data
             const zmmData = await parseExcelToJson(zmmFile);
             const me2mData = me2mFile ? await parseExcelToJson(me2mFile) : [];
 
             statusDiv.innerText = "Processing mapping rules...";
-            
-            // Run logic engine
             const finalDataArray = generateAnnexureBWorkbook(zmmData, me2mData);
 
             statusDiv.innerText = "Applying schema formatting and borders...";
-            
-            // Export with formatting
             await exportFormattedExcel(finalDataArray);
 
             statusDiv.innerHTML = "<span style='color:green;'>Success! Formatted file downloaded.</span>";
@@ -77,15 +71,13 @@
         }
     });
 
-    // Helper utility for parsing
     function parseExcelToJson(file) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = (e) => {
                 const data = new Uint8Array(e.target.result);
                 const workbook = XLSX.read(data, { type: 'array' });
-                const firstSheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[firstSheetName];
+                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
                 const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
                 resolve(json);
             };
@@ -94,54 +86,59 @@
         });
     }
 
-    // THE NEW FORMATTING ENGINE
     async function exportFormattedExcel(dataArray) {
         const workbook = new ExcelJS.Workbook();
         const sheet = workbook.addWorksheet("Annexure B");
 
-        // 1. Write the raw array data into the sheet
         sheet.addRows(dataArray);
 
-        // 2. Apply Custom Merges for your specific schema
-        sheet.mergeCells('A1:W1'); // Main Title
-        sheet.mergeCells('A2:W2'); // Subtitle
-        sheet.mergeCells('A3:E3'); // PR No & Date
-        sheet.mergeCells('F3:W3'); // Value of Indent
+        const totalRows = sheet.rowCount;
+        const footerStartRow = totalRows - 2;
 
-        // Vertical merges for standalone headers (Row 5 & 6)
+        // Apply Custom Schema Merges
+        sheet.mergeCells('A1:W1'); 
+        sheet.mergeCells('A2:W2'); 
+        sheet.mergeCells('A3:E3'); 
+        sheet.mergeCells('F3:W3'); 
+
         const verticalCols = ['A','B','C','D','E','F','G','H','I','J','P','U','V','W'];
         verticalCols.forEach(col => sheet.mergeCells(`${col}5:${col}6`));
 
-        // Horizontal merges for grouped headers
-        sheet.mergeCells('K5:O5'); // Actual Consumption in last 5 Years
+        sheet.mergeCells('K5:O5'); // 5 Years Grid Header
         sheet.mergeCells('Q5:R5'); // Pipeline PO
         sheet.mergeCells('S5:T5'); // Pipeline PR
 
-        // 3. Apply Borders, Fonts, and Alignment
-        sheet.eachRow((row, rowNumber) => {
-            row.eachCell((cell) => {
-                // Draw borders around everything
-                cell.border = {
-                    top: {style:'thin'}, left: {style:'thin'}, 
-                    bottom: {style:'thin'}, right: {style:'thin'}
-                };
-                
-                // Center align and wrap text
-                cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+        // Merge Footer Notes dynamically across columns
+        sheet.mergeCells(`A${footerStartRow}:W${footerStartRow}`);         
+        sheet.mergeCells(`B${footerStartRow + 1}:W${footerStartRow + 1}`); 
+        sheet.mergeCells(`B${footerStartRow + 2}:W${footerStartRow + 2}`); 
 
-                // Bold the headers (Rows 1 to 6)
-                if (rowNumber <= 6) {
-                    cell.font = { bold: true };
+        sheet.eachRow((row, rowNumber) => {
+            row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                if (rowNumber < footerStartRow) {
+                    cell.border = {
+                        top: {style:'thin'}, left: {style:'thin'}, 
+                        bottom: {style:'thin'}, right: {style:'thin'}
+                    };
+                    cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+
+                    if (rowNumber <= 6) {
+                        cell.font = { bold: true };
+                        cell.fill = { type: 'pattern', pattern:'solid', fgColor:{argb:'FFF2F2F2'} };
+                    }
+                } else {
+                    cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+                    if (rowNumber === footerStartRow + 1 && colNumber === 1) {
+                        cell.font = { bold: true };
+                    }
                 }
             });
         });
 
-        // 4. Adjust Column Widths so it looks clean upon opening
         sheet.columns.forEach(col => { col.width = 12; });
-        sheet.getColumn('D').width = 35; // Item Description needs more space
-        sheet.getColumn('W').width = 35; // Justification needs more space
+        sheet.getColumn('D').width = 35; // Expand Item Description
+        sheet.getColumn('W').width = 35; // Expand Justification
 
-        // 5. Trigger the download
         const buffer = await workbook.xlsx.writeBuffer();
         saveAs(new Blob([buffer]), "Annexure_B_Formatted.xlsx");
     }
