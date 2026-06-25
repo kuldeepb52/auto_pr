@@ -15,34 +15,33 @@ function getValueByFlexibleKey(row, substringMatch) {
 
 function parseSapNumeric(value) {
     if (value === undefined || value === null) return 0;
-    // Strip out commas in case numbers come formatted as text (e.g. 1,250.00)
     const cleanStr = String(value).replace(/,/g, '').trim();
     return parseFloat(cleanStr) || 0;
 }
 
 const AnnexureB_Rules = {
-    getSerialNumber: (serialNumber, zmmRecords, me2mRecords) => serialNumber,
-    getMaterialCode: (materialCode, zmmRecords, me2mRecords) => materialCode,
-    getOldMaterialCode: (zmmRecords, me2mRecords) => '',
+    getSerialNumber: (serialNumber) => serialNumber,
+    getMaterialCode: (materialCode) => materialCode,
+    getOldMaterialCode: () => '',
     
     // Column 4: Item Description
     getItemDescription: (zmmRecords, me2mRecords) => {
-        if (!zmmRecords || zmmRecords.length === 0) return '';
+        if (!zmmRecords || zmmRecords.length === 0) return '[DESCRIPTION NOT FOUND IN SAP]';
         return String(getValueByFlexibleKey(zmmRecords[0], 'description')).trim();
     },
 
-    getPopulation: (zmmRecords, me2mRecords) => '',
-    getQtyProposed: (zmmRecords, me2mRecords) => '',
+    getPopulation: () => '',
+    getQtyProposed: () => '',
 
     // Column 7: Quantity in Stock
-    getQtyInStock: (zmmRecords, me2mRecords) => {
+    getQtyInStock: (zmmRecords) => {
         if (!zmmRecords || zmmRecords.length === 0) return 0;
         return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'stock'));
     },
 
-    getSafetyStock: (zmmRecords, me2mRecords) => '',
-    getMandatorySpareQty: (zmmRecords, me2mRecords) => '',
-    getNormalLife: (zmmRecords, me2mRecords) => '',
+    getSafetyStock: () => '',
+    getMandatorySpareQty: () => '',
+    getNormalLife: () => '',
 
     // Column 11: Five Year Consumption Grid Logic
     getConsumptionYr4: (zmmRecords) => {
@@ -67,12 +66,19 @@ const AnnexureB_Rules = {
                parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'currfinyear'));
     },
 
-    getFailureRate: (zmmRecords, me2mRecords) => '',
-    getPipelinePoNoDate: (me2mRecords) => '',
-    getPipelinePoQty: (me2mRecords) => '',
-    getPipelinePrNoDate: (zmmRecords) => '',
-    getPipelinePrQty: (zmmRecords) => '',
-    getLastPoNoDate: (me2mRecords) => '',
-    getLastPoItemSlNo: (me2mRecords) => '',
-    getJustification: (zmmRecords, me2mRecords) => ''
+    getFailureRate: () => '',
+    getPipelinePoNoDate: () => '',
+    getPipelinePoQty: () => '',
+    getPipelinePrNoDate: () => '',
+    getPipelinePrQty: () => '',
+    getLastPoNoDate: () => '',
+    getLastPoItemSlNo: () => '',
+    
+    // Column 17: Justification (Fallback Protocol applied here)
+    getJustification: (zmmRecords, me2mRecords) => {
+        if ((!zmmRecords || zmmRecords.length === 0) && (!me2mRecords || me2mRecords.length === 0)) {
+            return 'No stock/consumption history found in SAP. First-time procurement or manual entry required.';
+        }
+        return '';
+    }
 };
