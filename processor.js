@@ -26,54 +26,54 @@ const SCHEMA_TEMPLATES = {
     ]
 };
 
-function generateAnnexureBWorkbook(zmmRawData, me2mRawData) {
-    // Extract unique clean materials
-    const sortedMaterials = [...new Set(zmmRawData.map(r => String(r['Material'] || '').trim()).filter(Boolean))]
-        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-
+function generateAnnexureBWorkbook(masterList, zmmRawData, me2mRawData) {
     // Group items into Maps for O(1) performance lookup
     const zmmRegistry = new Map();
     zmmRawData.forEach(r => {
         const m = String(r['Material'] || '').trim();
-        if (!zmmRegistry.has(m)) zmmRegistry.set(m, []);
-        zmmRegistry.get(m).push(r);
+        if (m) {
+            if (!zmmRegistry.has(m)) zmmRegistry.set(m, []);
+            zmmRegistry.get(m).push(r);
+        }
     });
 
     const me2mRegistry = new Map();
     me2mRawData.forEach(r => {
         const m = String(r['Material'] || '').trim();
-        if (!me2mRegistry.has(m)) me2mRegistry.set(m, []);
-        me2mRegistry.get(m).push(r);
+        if (m) {
+            if (!me2mRegistry.has(m)) me2mRegistry.set(m, []);
+            me2mRegistry.get(m).push(r);
+        }
     });
 
-    // Execute generation mapping loop
-    const dataRows = sortedMaterials.map((materialCode, idx) => {
+    // Execute generation mapping loop based on the Master Anchor List
+    const dataRows = masterList.map((materialCode, idx) => {
         const zmmRecords = zmmRegistry.get(materialCode) || [];
         const me2mRecords = me2mRegistry.get(materialCode) || [];
 
         return [
-            AnnexureB_Rules.getSerialNumber(idx + 1, zmmRecords, me2mRecords),
-            AnnexureB_Rules.getMaterialCode(materialCode, zmmRecords, me2mRecords),
-            AnnexureB_Rules.getOldMaterialCode(zmmRecords, me2mRecords),
-            AnnexureB_Rules.getItemDescription(zmmRecords, me2mRecords), // Column 4 [ACTIVE]
-            AnnexureB_Rules.getPopulation(zmmRecords, me2mRecords),
-            AnnexureB_Rules.getQtyProposed(zmmRecords, me2mRecords),
-            AnnexureB_Rules.getQtyInStock(zmmRecords, me2mRecords),       // Column 7 [ACTIVE]
-            AnnexureB_Rules.getSafetyStock(zmmRecords, me2mRecords),
-            AnnexureB_Rules.getMandatorySpareQty(zmmRecords, me2mRecords),
-            AnnexureB_Rules.getNormalLife(zmmRecords, me2mRecords),
-            AnnexureB_Rules.getConsumptionYr4(zmmRecords),               // Column 11-A [ACTIVE]
-            AnnexureB_Rules.getConsumptionYr3(zmmRecords),               // Column 11-B [ACTIVE]
-            AnnexureB_Rules.getConsumptionYr2(zmmRecords),               // Column 11-C [ACTIVE]
-            AnnexureB_Rules.getConsumptionPrevYr(zmmRecords),             // Column 11-D [ACTIVE]
-            AnnexureB_Rules.getConsumptionCurrYr(zmmRecords),             // Column 11-E [ACTIVE]
-            AnnexureB_Rules.getFailureRate(zmmRecords, me2mRecords),
-            AnnexureB_Rules.getPipelinePoNoDate(me2mRecords),
-            AnnexureB_Rules.getPipelinePoQty(me2mRecords),
-            AnnexureB_Rules.getPipelinePrNoDate(zmmRecords),
-            AnnexureB_Rules.getPipelinePrQty(zmmRecords),
-            AnnexureB_Rules.getLastPoNoDate(me2mRecords),
-            AnnexureB_Rules.getLastPoItemSlNo(me2mRecords),
+            AnnexureB_Rules.getSerialNumber(idx + 1),
+            AnnexureB_Rules.getMaterialCode(materialCode),
+            AnnexureB_Rules.getOldMaterialCode(),
+            AnnexureB_Rules.getItemDescription(zmmRecords, me2mRecords), 
+            AnnexureB_Rules.getPopulation(),
+            AnnexureB_Rules.getQtyProposed(),
+            AnnexureB_Rules.getQtyInStock(zmmRecords),                   
+            AnnexureB_Rules.getSafetyStock(),
+            AnnexureB_Rules.getMandatorySpareQty(),
+            AnnexureB_Rules.getNormalLife(),
+            AnnexureB_Rules.getConsumptionYr4(zmmRecords),               
+            AnnexureB_Rules.getConsumptionYr3(zmmRecords),               
+            AnnexureB_Rules.getConsumptionYr2(zmmRecords),               
+            AnnexureB_Rules.getConsumptionPrevYr(zmmRecords),             
+            AnnexureB_Rules.getConsumptionCurrYr(zmmRecords),             
+            AnnexureB_Rules.getFailureRate(),
+            AnnexureB_Rules.getPipelinePoNoDate(),
+            AnnexureB_Rules.getPipelinePoQty(),
+            AnnexureB_Rules.getPipelinePrNoDate(),
+            AnnexureB_Rules.getPipelinePrQty(),
+            AnnexureB_Rules.getLastPoNoDate(),
+            AnnexureB_Rules.getLastPoItemSlNo(),
             AnnexureB_Rules.getJustification(zmmRecords, me2mRecords)
         ];
     });
