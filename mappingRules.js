@@ -1,86 +1,78 @@
 /**
- * ISOLATED MAPPING RULES FOR ANNEXURE B COLUMNS
- * Add logic rules inside these independent functions step-by-step.
+ * INDUSTRIAL ROBUST KEY EXTRACTOR
+ * Normalizes keys to ignore variations in SAP space padding or column dots.
  */
+function getValueByFlexibleKey(row, substringMatch) {
+    if (!row) return '';
+    const target = substringMatch.toLowerCase().replace(/\s+/g, '');
+    for (let key in row) {
+        if (key.toLowerCase().replace(/\s+/g, '').includes(target)) {
+            return row[key];
+        }
+    }
+    return '';
+}
+
+function parseSapNumeric(value) {
+    if (value === undefined || value === null) return 0;
+    // Strip out commas in case numbers come formatted as text (e.g. 1,250.00)
+    const cleanStr = String(value).replace(/,/g, '').trim();
+    return parseFloat(cleanStr) || 0;
+}
+
 const AnnexureB_Rules = {
-    // Column 1: Sl . No.
-    getSerialNumber: (serialNumber, zmmRecords, me2mRecords) => {
-        return serialNumber;
-    },
-
-    // Column 2: Material Code
-    getMaterialCode: (materialCode, zmmRecords, me2mRecords) => {
-        return materialCode;
-    },
-
-    // Column 3: Old Material code if any
-    getOldMaterialCode: (zmmRecords, me2mRecords) => {
-        return ''; // [Placeholder for next steps]
-    },
-
+    getSerialNumber: (serialNumber, zmmRecords, me2mRecords) => serialNumber,
+    getMaterialCode: (materialCode, zmmRecords, me2mRecords) => materialCode,
+    getOldMaterialCode: (zmmRecords, me2mRecords) => '',
+    
     // Column 4: Item Description
     getItemDescription: (zmmRecords, me2mRecords) => {
-        return ''; // [Placeholder for next steps]
+        if (!zmmRecords || zmmRecords.length === 0) return '';
+        return String(getValueByFlexibleKey(zmmRecords[0], 'description')).trim();
     },
 
-    // Column 5: Population of Item
-    getPopulation: (zmmRecords, me2mRecords) => {
-        return ''; // [Placeholder for next steps]
-    },
+    getPopulation: (zmmRecords, me2mRecords) => '',
+    getQtyProposed: (zmmRecords, me2mRecords) => '',
 
-    // Column 6: Quantity Proposed Indent
-    getQtyProposed: (zmmRecords, me2mRecords) => {
-        return ''; // [Placeholder for next steps]
-    },
-
-    // Column 7: Quantity in Stock as on date
+    // Column 7: Quantity in Stock
     getQtyInStock: (zmmRecords, me2mRecords) => {
-        return ''; // [Placeholder for next steps]
+        if (!zmmRecords || zmmRecords.length === 0) return 0;
+        return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'stock'));
     },
 
-    // Column 8: Safety Stock
-    getSafetyStock: (zmmRecords, me2mRecords) => {
-        return ''; // [Placeholder for next steps]
+    getSafetyStock: (zmmRecords, me2mRecords) => '',
+    getMandatorySpareQty: (zmmRecords, me2mRecords) => '',
+    getNormalLife: (zmmRecords, me2mRecords) => '',
+
+    // Column 11: Five Year Consumption Grid Logic
+    getConsumptionYr4: (zmmRecords) => {
+        if (!zmmRecords || zmmRecords.length === 0) return 0;
+        return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'yr-4'));
+    },
+    getConsumptionYr3: (zmmRecords) => {
+        if (!zmmRecords || zmmRecords.length === 0) return 0;
+        return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'yr-3'));
+    },
+    getConsumptionYr2: (zmmRecords) => {
+        if (!zmmRecords || zmmRecords.length === 0) return 0;
+        return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'yr-2'));
+    },
+    getConsumptionPrevYr: (zmmRecords) => {
+        if (!zmmRecords || zmmRecords.length === 0) return 0;
+        return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'prevfn'));
+    },
+    getConsumptionCurrYr: (zmmRecords) => {
+        if (!zmmRecords || zmmRecords.length === 0) return 0;
+        return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'currfin.year')) || 
+               parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'currfinyear'));
     },
 
-    // Column 9: Quantity under Mandatory Spare List
-    getMandatorySpareQty: (zmmRecords, me2mRecords) => {
-        return ''; // [Placeholder for next steps]
-    },
-
-    // Column 10: Normal Life of item (Year)
-    getNormalLife: (zmmRecords, me2mRecords) => {
-        return ''; // [Placeholder for next steps]
-    },
-
-    // Column 11: Consumption Grid (Yr-4 to Current)
-    getConsumptionYr4: (zmmRecords) => '',
-    getConsumptionYr3: (zmmRecords) => '',
-    getConsumptionYr2: (zmmRecords) => '',
-    getConsumptionPrevYr: (zmmRecords) => '',
-    getConsumptionCurrYr: (zmmRecords) => '',
-
-    // Column 12: Failure rate
-    getFailureRate: (zmmRecords, me2mRecords) => {
-        return ''; // [Placeholder for next steps]
-    },
-
-    // Column 13: Pipeline PO details
+    getFailureRate: (zmmRecords, me2mRecords) => '',
     getPipelinePoNoDate: (me2mRecords) => '',
     getPipelinePoQty: (me2mRecords) => '',
-
-    // Column 14: Pipeline PR details
     getPipelinePrNoDate: (zmmRecords) => '',
     getPipelinePrQty: (zmmRecords) => '',
-
-    // Column 15: Last PO No. & Date
     getLastPoNoDate: (me2mRecords) => '',
-
-    // Column 16: Last Po. Item Sl. No.
     getLastPoItemSlNo: (me2mRecords) => '',
-
-    // Column 17: Justification of Qty
-    getJustification: (zmmRecords, me2mRecords) => {
-        return ''; // [Placeholder for next steps]
-    }
+    getJustification: (zmmRecords, me2mRecords) => ''
 };
