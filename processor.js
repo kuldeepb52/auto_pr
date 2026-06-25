@@ -1,4 +1,4 @@
-// LOCKED-IN STRUCTURE CONFIGURATION (DO NOT ALTER STRUCTURAL ROWS)
+// LOCKED-IN STRUCTURE CONFIGURATION
 const SCHEMA_TEMPLATES = {
     AnnexureB_TopRows: [
         ['Material Procurement Justification sheet'],
@@ -8,8 +8,8 @@ const SCHEMA_TEMPLATES = {
     ],
     AnnexureB_Headers_Row1: [
         'Sl . No.', 'Material Code', 'Old Material code if any', 'Item Description', 
-        'Population of Item ', 'Quantity Proposed Indent ', '\nQuantity in Stock as on date', 
-        'Saftey Stock*\n(Minimum Qty. to be maintained at site ', 'Quantity under Mandatory Spare List as on date', 
+        'Population of Item ', 'Quantity Proposed Indent ', 'Quantity in Stock as on date', 
+        'Saftey Stock*\n(Minimum Qty. to be maintained at site )', 'Quantity under Mandatory Spare List as on date', 
         'Normal Life of item (Year)', 'Actual Consumption in last 5 Years ', '', '', '', '', 
         'Failure rate (frequent /normal)', 'Pipeline PO ', '', 'Pipeline PR', '', 
         'Last PO No. & Date', 'Last Po. Item Sl. No.', 'Justification of Qty'
@@ -18,61 +18,55 @@ const SCHEMA_TEMPLATES = {
         '', '', '', '', '', '', '', '', '', '', 
         'Curr. Fin Yr-4', 'Curr. Fin Yr-3', 'Curr. Fin Yr-2', 'Previous Fin Yr', 'Curr. Fin Year', 
         '', 'PO No. /Date ', 'Qty ', 'PRNo. /Date ', 'Qty ', '', '', ''
+    ],
+    AnnexureB_FooterRows: [
+        ['* This data is to be given where the item is a critical spare as approved by ED (OS) / Minimum Qty. to be maintained at site for area of critical application'],
+        ['Note', '1. Please take care that sequence of items as in the PR is also maintained in this sheet'],
+        ['', '2. This sheet is required to be filled for ZSPR type materials only.']
     ]
 };
 
-/**
- * PRIMARY WORKBOOK COMPILER
- */
 function generateAnnexureBWorkbook(zmmRawData, me2mRawData) {
-    // Step 1: Identify all unique material codes, filter empty codes, sort ASCENDING order
-    const sortedUniqueMaterials = [...new Set(zmmRawData.map(row => {
-        return row['Material'] ? String(row['Material']).trim() : '';
-    }).filter(Boolean))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+    // Extract unique clean materials
+    const sortedMaterials = [...new Set(zmmRawData.map(r => String(r['Material'] || '').trim()).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 
-    // Step 2: Establish decoupled registries to keep file data entirely uncombined
+    // Group items into Maps for O(1) performance lookup
     const zmmRegistry = new Map();
-    zmmRawData.forEach(row => {
-        const mat = row['Material'] ? String(row['Material']).trim() : '';
-        if (!mat) return;
-        if (!zmmRegistry.has(mat)) zmmRegistry.set(mat, []);
-        zmmRegistry.get(mat).push(row);
+    zmmRawData.forEach(r => {
+        const m = String(r['Material'] || '').trim();
+        if (!zmmRegistry.has(m)) zmmRegistry.set(m, []);
+        zmmRegistry.get(m).push(r);
     });
 
     const me2mRegistry = new Map();
-    me2mRawData.forEach(row => {
-        const mat = row['Material'] ? String(row['Material']).trim() : '';
-        if (!mat) return;
-        if (!me2mRegistry.has(mat)) me2mRegistry.set(mat, []);
-        me2mRegistry.get(mat).push(row);
+    me2mRawData.forEach(r => {
+        const m = String(r['Material'] || '').trim();
+        if (!me2mRegistry.has(m)) me2mRegistry.set(m, []);
+        me2mRegistry.get(m).push(r);
     });
 
-    // Step 3: Map items one by one into rows using our modular rules
-    const dataRows = [];
-    let currentSerial = 1;
-
-    sortedUniqueMaterials.forEach(materialCode => {
-        // Isolate file records matching this code completely
+    // Execute generation mapping loop
+    const dataRows = sortedMaterials.map((materialCode, idx) => {
         const zmmRecords = zmmRegistry.get(materialCode) || [];
         const me2mRecords = me2mRegistry.get(materialCode) || [];
 
-        // Build row columns by dispatching queries to our rule index
-        const processedRow = [
-            AnnexureB_Rules.getSerialNumber(currentSerial++, zmmRecords, me2mRecords),
+        return [
+            AnnexureB_Rules.getSerialNumber(idx + 1, zmmRecords, me2mRecords),
             AnnexureB_Rules.getMaterialCode(materialCode, zmmRecords, me2mRecords),
             AnnexureB_Rules.getOldMaterialCode(zmmRecords, me2mRecords),
-            AnnexureB_Rules.getItemDescription(zmmRecords, me2mRecords),
+            AnnexureB_Rules.getItemDescription(zmmRecords, me2mRecords), // Column 4 [ACTIVE]
             AnnexureB_Rules.getPopulation(zmmRecords, me2mRecords),
             AnnexureB_Rules.getQtyProposed(zmmRecords, me2mRecords),
-            AnnexureB_Rules.getQtyInStock(zmmRecords, me2mRecords),
+            AnnexureB_Rules.getQtyInStock(zmmRecords, me2mRecords),       // Column 7 [ACTIVE]
             AnnexureB_Rules.getSafetyStock(zmmRecords, me2mRecords),
             AnnexureB_Rules.getMandatorySpareQty(zmmRecords, me2mRecords),
             AnnexureB_Rules.getNormalLife(zmmRecords, me2mRecords),
-            AnnexureB_Rules.getConsumptionYr4(zmmRecords),
-            AnnexureB_Rules.getConsumptionYr3(zmmRecords),
-            AnnexureB_Rules.getConsumptionYr2(zmmRecords),
-            AnnexureB_Rules.getConsumptionPrevYr(zmmRecords),
-            AnnexureB_Rules.getConsumptionCurrYr(zmmRecords),
+            AnnexureB_Rules.getConsumptionYr4(zmmRecords),               // Column 11-A [ACTIVE]
+            AnnexureB_Rules.getConsumptionYr3(zmmRecords),               // Column 11-B [ACTIVE]
+            AnnexureB_Rules.getConsumptionYr2(zmmRecords),               // Column 11-C [ACTIVE]
+            AnnexureB_Rules.getConsumptionPrevYr(zmmRecords),             // Column 11-D [ACTIVE]
+            AnnexureB_Rules.getConsumptionCurrYr(zmmRecords),             // Column 11-E [ACTIVE]
             AnnexureB_Rules.getFailureRate(zmmRecords, me2mRecords),
             AnnexureB_Rules.getPipelinePoNoDate(me2mRecords),
             AnnexureB_Rules.getPipelinePoQty(me2mRecords),
@@ -82,15 +76,13 @@ function generateAnnexureBWorkbook(zmmRawData, me2mRawData) {
             AnnexureB_Rules.getLastPoItemSlNo(me2mRecords),
             AnnexureB_Rules.getJustification(zmmRecords, me2mRecords)
         ];
-
-        dataRows.push(processedRow);
     });
 
-    // Step 4: Bundle structured top headers with compiled rows exactly as per template layout
     return [
         ...SCHEMA_TEMPLATES.AnnexureB_TopRows,
         SCHEMA_TEMPLATES.AnnexureB_Headers_Row1,
         SCHEMA_TEMPLATES.AnnexureB_Headers_Row2,
-        ...dataRows
+        ...dataRows,
+        ...SCHEMA_TEMPLATES.AnnexureB_FooterRows
     ];
 }
