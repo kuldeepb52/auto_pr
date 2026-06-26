@@ -68,10 +68,10 @@ function generateAnnexureBWorkbook(masterList, zmmRawData, me2mRawData) {
             AnnexureB_Rules.getConsumptionPrevYr(zmmRecords),             
             AnnexureB_Rules.getConsumptionCurrYr(zmmRecords),             
             AnnexureB_Rules.getFailureRate(),
-            AnnexureB_Rules.getPipelinePoNoDate(zmmRecords), // Now targeting ZMMMATHIST array
-            AnnexureB_Rules.getPipelinePoQty(zmmRecords),    // Now targeting ZMMMATHIST array
-            AnnexureB_Rules.getPipelinePrNoDate(),
-            AnnexureB_Rules.getPipelinePrQty(),
+            AnnexureB_Rules.getPipelinePoNoDate(zmmRecords),
+            AnnexureB_Rules.getPipelinePoQty(zmmRecords),
+            AnnexureB_Rules.getPipelinePrNoDate(zmmRecords),
+            AnnexureB_Rules.getPipelinePrQty(zmmRecords),
             AnnexureB_Rules.getLastPoNoDate(),
             AnnexureB_Rules.getLastPoItemSlNo(),
             AnnexureB_Rules.getJustification(zmmRecords, me2mRecords)
