@@ -19,6 +19,27 @@ function parseSapNumeric(value) {
     return parseFloat(cleanStr) || 0;
 }
 
+/**
+ * SAP / EXCEL DATE FIXER
+ * Converts Excel serial numbers (e.g. 45366) back into DD.MM.YYYY strings
+ */
+function formatSapDate(val) {
+    if (val === undefined || val === null || val === '') return '';
+    
+    // If the library parsed it as an Excel serial number
+    if (typeof val === 'number') {
+        // 25569 is the Excel epoch offset
+        const dateObj = new Date(Math.round((val - 25569) * 86400 * 1000));
+        const d = String(dateObj.getUTCDate()).padStart(2, '0');
+        const m = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
+        const y = dateObj.getUTCFullYear();
+        return `${d}.${m}.${y}`;
+    }
+    
+    // If it is already a normal text date, just return it clean
+    return String(val).trim();
+}
+
 const AnnexureB_Rules = {
     getSerialNumber: (serialNumber) => serialNumber,
     getMaterialCode: (materialCode) => materialCode,
@@ -82,7 +103,10 @@ const AnnexureB_Rules = {
         const formattedPOs = poRows.map(row => {
             const docDetail = String(getValueByFlexibleKey(row, 'doc.detail')).trim();
             const poNumber = docDetail.split('/')[0].trim();
-            const reqDate = String(getValueByFlexibleKey(row, 'req.date')).trim();
+            
+            // USING THE NEW DATE FIXER HERE
+            const rawReqDate = getValueByFlexibleKey(row, 'req.date');
+            const reqDate = formatSapDate(rawReqDate);
             
             return (poNumber && reqDate) ? `${poNumber} / ${reqDate}` : poNumber;
         }).filter(Boolean);
@@ -118,7 +142,10 @@ const AnnexureB_Rules = {
         const formattedPRs = prRows.map(row => {
             const docDetail = String(getValueByFlexibleKey(row, 'doc.detail')).trim();
             const prNumber = docDetail.split('/')[0].trim();
-            const reqDate = String(getValueByFlexibleKey(row, 'req.date')).trim();
+            
+            // USING THE NEW DATE FIXER HERE
+            const rawReqDate = getValueByFlexibleKey(row, 'req.date');
+            const reqDate = formatSapDate(rawReqDate);
             
             return (prNumber && reqDate) ? `${prNumber} / ${reqDate}` : prNumber;
         }).filter(Boolean);
