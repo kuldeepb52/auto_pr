@@ -196,11 +196,8 @@ const AnnexureB_Rules = {
     getLastPoNoDate: () => '',
     getLastPoItemSlNo: () => '',
     
-    // Column 17 (Excel Column W): Justification Fallback Protocol
+    // Column 17 (Excel Column W): Action Required Prompt
     getJustification: (zmmRecords, me2mRecords) => {
-        if ((!zmmRecords || zmmRecords.length === 0) && (!me2mRecords || me2mRecords.length === 0)) {
-            return 'No stock/consumption history found in SAP. First-time procurement or manual entry required.';
-        }
-        return '';
+        return 'INDENTOR TO FILL'; 
     }
 };
