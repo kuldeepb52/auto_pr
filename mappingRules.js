@@ -43,7 +43,7 @@ const AnnexureB_Rules = {
     getMandatorySpareQty: () => '',
     getNormalLife: () => '',
 
-    // Column 11: Five Year Consumption Grid Logic
+    // Column 11: Five Year Consumption Grid Logic (Columns K to O)
     getConsumptionYr4: (zmmRecords) => {
         if (!zmmRecords || zmmRecords.length === 0) return 0;
         return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'yr-4'));
@@ -70,25 +70,24 @@ const AnnexureB_Rules = {
 
     // Column 12 (Excel Column Q): Pipeline PO No & Date from ZMMMATHIST
     getPipelinePoNoDate: (zmmRecords) => {
-        if (!zmmRecords || zmmRecords.length === 0) return '';
+        if (!zmmRecords || zmmRecords.length === 0) return 'NA';
         
-        // Filter rows where Doc. Type is 'Poitem'
         const poRows = zmmRecords.filter(r => {
             const docType = String(getValueByFlexibleKey(r, 'doc.type')).trim().toLowerCase();
             return docType === 'poitem';
         });
         
-        if (poRows.length === 0) return '';
+        if (poRows.length === 0) return 'NA';
 
-        // Extract and format all unique pipeline PO instances found
-        return poRows.map(row => {
+        const formattedPOs = poRows.map(row => {
             const docDetail = String(getValueByFlexibleKey(row, 'doc.detail')).trim();
-            // Split by '/' to extract the PO number before the slash
             const poNumber = docDetail.split('/')[0].trim();
             const reqDate = String(getValueByFlexibleKey(row, 'req.date')).trim();
             
             return (poNumber && reqDate) ? `${poNumber} / ${reqDate}` : poNumber;
-        }).filter(Boolean).join('\n');
+        }).filter(Boolean);
+
+        return formattedPOs.length > 0 ? formattedPOs.join('\n') : 'NA';
     },
 
     // Column 13 (Excel Column R): Pipeline PO Quantity from ZMMMATHIST
@@ -100,18 +99,51 @@ const AnnexureB_Rules = {
             return docType === 'poitem';
         });
 
-        // Sum up quantities if multiple pipeline PO components exist for this material
         return poRows.reduce((sum, row) => {
             return sum + parseSapNumeric(getValueByFlexibleKey(row, 'quantity'));
         }, 0);
     },
 
-    getPipelinePrNoDate: () => '',
-    getPipelinePrQty: () => '',
+    // Column 14 (Excel Column S): Pipeline PR No & Date from ZMMMATHIST
+    getPipelinePrNoDate: (zmmRecords) => {
+        if (!zmmRecords || zmmRecords.length === 0) return 'NA';
+        
+        const prRows = zmmRecords.filter(r => {
+            const docType = String(getValueByFlexibleKey(r, 'doc.type')).trim().toLowerCase();
+            return docType === 'purrqs';
+        });
+        
+        if (prRows.length === 0) return 'NA';
+
+        const formattedPRs = prRows.map(row => {
+            const docDetail = String(getValueByFlexibleKey(row, 'doc.detail')).trim();
+            const prNumber = docDetail.split('/')[0].trim();
+            const reqDate = String(getValueByFlexibleKey(row, 'req.date')).trim();
+            
+            return (prNumber && reqDate) ? `${prNumber} / ${reqDate}` : prNumber;
+        }).filter(Boolean);
+
+        return formattedPRs.length > 0 ? formattedPRs.join('\n') : 'NA';
+    },
+
+    // Column 15 (Excel Column T): Pipeline PR Quantity from ZMMMATHIST
+    getPipelinePrQty: (zmmRecords) => {
+        if (!zmmRecords || zmmRecords.length === 0) return 0;
+
+        const prRows = zmmRecords.filter(r => {
+            const docType = String(getValueByFlexibleKey(r, 'doc.type')).trim().toLowerCase();
+            return docType === 'purrqs';
+        });
+
+        return prRows.reduce((sum, row) => {
+            return sum + parseSapNumeric(getValueByFlexibleKey(row, 'quantity'));
+        }, 0);
+    },
+
     getLastPoNoDate: () => '',
     getLastPoItemSlNo: () => '',
     
-    // Column 17: Justification
+    // Column 17 (Excel Column W): Justification Fallback Protocol
     getJustification: (zmmRecords, me2mRecords) => {
         if ((!zmmRecords || zmmRecords.length === 0) && (!me2mRecords || me2mRecords.length === 0)) {
             return 'No stock/consumption history found in SAP. First-time procurement or manual entry required.';
