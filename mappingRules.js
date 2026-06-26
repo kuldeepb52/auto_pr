@@ -67,14 +67,51 @@ const AnnexureB_Rules = {
     },
 
     getFailureRate: () => '',
-    getPipelinePoNoDate: () => '',
-    getPipelinePoQty: () => '',
+
+    // Column 12 (Excel Column Q): Pipeline PO No & Date from ZMMMATHIST
+    getPipelinePoNoDate: (zmmRecords) => {
+        if (!zmmRecords || zmmRecords.length === 0) return '';
+        
+        // Filter rows where Doc. Type is 'Poitem'
+        const poRows = zmmRecords.filter(r => {
+            const docType = String(getValueByFlexibleKey(r, 'doc.type')).trim().toLowerCase();
+            return docType === 'poitem';
+        });
+        
+        if (poRows.length === 0) return '';
+
+        // Extract and format all unique pipeline PO instances found
+        return poRows.map(row => {
+            const docDetail = String(getValueByFlexibleKey(row, 'doc.detail')).trim();
+            // Split by '/' to extract the PO number before the slash
+            const poNumber = docDetail.split('/')[0].trim();
+            const reqDate = String(getValueByFlexibleKey(row, 'req.date')).trim();
+            
+            return (poNumber && reqDate) ? `${poNumber} / ${reqDate}` : poNumber;
+        }).filter(Boolean).join('\n');
+    },
+
+    // Column 13 (Excel Column R): Pipeline PO Quantity from ZMMMATHIST
+    getPipelinePoQty: (zmmRecords) => {
+        if (!zmmRecords || zmmRecords.length === 0) return 0;
+
+        const poRows = zmmRecords.filter(r => {
+            const docType = String(getValueByFlexibleKey(r, 'doc.type')).trim().toLowerCase();
+            return docType === 'poitem';
+        });
+
+        // Sum up quantities if multiple pipeline PO components exist for this material
+        return poRows.reduce((sum, row) => {
+            return sum + parseSapNumeric(getValueByFlexibleKey(row, 'quantity'));
+        }, 0);
+    },
+
     getPipelinePrNoDate: () => '',
     getPipelinePrQty: () => '',
     getLastPoNoDate: () => '',
     getLastPoItemSlNo: () => '',
     
-    // Column 17: Justification (Fallback Protocol applied here)
+    // Column 17: Justification
     getJustification: (zmmRecords, me2mRecords) => {
         if ((!zmmRecords || zmmRecords.length === 0) && (!me2mRecords || me2mRecords.length === 0)) {
             return 'No stock/consumption history found in SAP. First-time procurement or manual entry required.';
