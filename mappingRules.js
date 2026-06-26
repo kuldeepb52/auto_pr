@@ -20,24 +20,50 @@ function parseSapNumeric(value) {
 }
 
 /**
- * SAP / EXCEL DATE FIXER
- * Converts Excel serial numbers (e.g. 45366) back into DD.MM.YYYY strings
+ * BULLETPROOF SAP / EXCEL DATE FIXER
+ * Catches Excel serials (number or string), SAP YYYYMMDD strings, and standard dates.
  */
 function formatSapDate(val) {
     if (val === undefined || val === null || val === '') return '';
     
-    // If the library parsed it as an Excel serial number
-    if (typeof val === 'number') {
-        // 25569 is the Excel epoch offset
-        const dateObj = new Date(Math.round((val - 25569) * 86400 * 1000));
-        const d = String(dateObj.getUTCDate()).padStart(2, '0');
-        const m = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
-        const y = dateObj.getUTCFullYear();
+    let strVal = String(val).trim();
+    
+    // 1. Catch Excel Serial Numbers (e.g. 45366 or 45366.5)
+    if (/^\d{5}(\.\d+)?$/.test(strVal)) {
+        const numVal = parseFloat(strVal);
+        if (numVal > 40000 && numVal < 60000) { 
+            const dateObj = new Date(Math.round((numVal - 25569) * 86400 * 1000));
+            const d = String(dateObj.getUTCDate()).padStart(2, '0');
+            const m = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
+            const y = dateObj.getUTCFullYear();
+            return `${d}.${m}.${y}`;
+        }
+    }
+
+    // 2. Catch SAP Raw Internal Format (YYYYMMDD) e.g., "20240315"
+    if (/^\d{8}$/.test(strVal)) {
+        const y = strVal.substring(0, 4);
+        const m = strVal.substring(4, 6);
+        const d = strVal.substring(6, 8);
         return `${d}.${m}.${y}`;
     }
-    
-    // If it is already a normal text date, just return it clean
-    return String(val).trim();
+
+    // 3. Catch DD.MM.YYYY, DD/MM/YYYY, or DD-MM-YYYY and normalize to dots
+    if (/^\d{2}[\.\/\-]\d{2}[\.\/\-]\d{4}$/.test(strVal)) {
+        return strVal.replace(/[\/\-]/g, '.'); 
+    }
+
+    // 4. Catch standard web date formats (YYYY-MM-DD or MM/DD/YYYY)
+    const parsedDate = new Date(strVal);
+    if (!isNaN(parsedDate.getTime())) {
+        const d = String(parsedDate.getDate()).padStart(2, '0');
+        const m = String(parsedDate.getMonth() + 1).padStart(2, '0');
+        const y = parsedDate.getFullYear();
+        return `${d}.${m}.${y}`;
+    }
+
+    // 5. Failsafe: If it is completely unrecognized text, just return it as is
+    return strVal;
 }
 
 const AnnexureB_Rules = {
@@ -104,7 +130,7 @@ const AnnexureB_Rules = {
             const docDetail = String(getValueByFlexibleKey(row, 'doc.detail')).trim();
             const poNumber = docDetail.split('/')[0].trim();
             
-            // USING THE NEW DATE FIXER HERE
+            // Extract and format Date
             const rawReqDate = getValueByFlexibleKey(row, 'req.date');
             const reqDate = formatSapDate(rawReqDate);
             
@@ -143,7 +169,7 @@ const AnnexureB_Rules = {
             const docDetail = String(getValueByFlexibleKey(row, 'doc.detail')).trim();
             const prNumber = docDetail.split('/')[0].trim();
             
-            // USING THE NEW DATE FIXER HERE
+            // Extract and format Date
             const rawReqDate = getValueByFlexibleKey(row, 'req.date');
             const reqDate = formatSapDate(rawReqDate);
             
