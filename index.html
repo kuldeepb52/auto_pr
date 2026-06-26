@@ -8,213 +8,619 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 30px; background-color: #f4f6f9; color: #333; }
-        .container { max-width: 800px; margin: auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        h2 { color: #0056b3; border-bottom: 2px solid #0056b3; padding-bottom: 8px; }
-        .file-group { margin-bottom: 20px; display: flex; flex-direction: column; }
-        label { font-weight: bold; margin-bottom: 5px; color: #444; }
-        input[type="file"] { padding: 10px; border: 1px dashed #ccc; background: #fafafa; border-radius: 4px; }
-        textarea { padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-family: monospace; resize: vertical; }
-        button { background-color: #0056b3; color: white; padding: 12px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 10px; }
-        button:hover { background-color: #004494; }
-        .btn-success { background-color: #28a745; }
-        .btn-success:hover { background-color: #218838; }
-        #status { margin-top: 15px; font-weight: bold; }
-        .step-panel { display: none; padding: 20px; background: #fdfdfd; border: 1px solid #e0e0e0; border-radius: 6px; margin-top: 20px; }
-        .active-step { display: block; }
-        .material-badge { display: inline-block; background: #e9ecef; border: 1px solid #ced4da; padding: 4px 8px; border-radius: 4px; margin: 4px; font-size: 14px; }
+        *, *::before, *::after { box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 30px 20px;
+            background: #eef1f6;
+            color: #2c2c2c;
+        }
+
+        .container {
+            max-width: 860px;
+            margin: auto;
+            background: #fff;
+            padding: 30px 32px;
+            border-radius: 10px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+        }
+
+        h2 {
+            color: #003d8f;
+            border-bottom: 3px solid #003d8f;
+            padding-bottom: 10px;
+            margin-top: 0;
+            font-size: 20px;
+            letter-spacing: 0.3px;
+        }
+
+        h3 { color: #003d8f; margin-bottom: 10px; font-size: 16px; }
+
+        .step-panel {
+            display: none;
+            padding: 22px 24px;
+            background: #f9fafc;
+            border: 1px solid #dde3ec;
+            border-radius: 8px;
+            margin-top: 22px;
+        }
+        .step-panel.active-step { display: block; }
+
+        .file-group {
+            margin-bottom: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        label {
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+
+        label small {
+            display: block;
+            font-weight: 400;
+            color: #777;
+            margin-top: 2px;
+            font-size: 12px;
+        }
+
+        input[type="file"] {
+            padding: 9px 12px;
+            border: 1px dashed #aab4c8;
+            background: #f4f6fb;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        textarea {
+            padding: 10px 12px;
+            border: 1px solid #cdd3df;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            resize: vertical;
+            background: #fafbfd;
+            width: 100%;
+        }
+
+        /* ── Buttons ── */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 11px 22px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background 0.18s, transform 0.1s;
+        }
+        .btn:active { transform: scale(0.98); }
+        .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+        .btn-primary  { background: #0056b3; color: #fff; }
+        .btn-primary:hover:not(:disabled)  { background: #004494; }
+
+        .btn-success  { background: #1e7d3b; color: #fff; }
+        .btn-success:hover:not(:disabled)  { background: #165f2d; }
+
+        .btn-annexure { background: #7b3fb5; color: #fff; }
+        .btn-annexure:hover:not(:disabled) { background: #5e2f8e; }
+
+        /* ── Generate buttons row ── */
+        .generate-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 14px;
+        }
+
+        /* ── Material badges ── */
+        #materialTags {
+            margin-bottom: 18px;
+            max-height: 140px;
+            overflow-y: auto;
+            padding: 6px;
+            background: #f0f3f9;
+            border-radius: 6px;
+            border: 1px solid #dde3ec;
+        }
+
+        .material-badge {
+            display: inline-block;
+            background: #fff;
+            border: 1px solid #c3cfe0;
+            padding: 3px 9px;
+            border-radius: 4px;
+            margin: 3px;
+            font-size: 12px;
+            font-family: 'Courier New', monospace;
+            color: #2c2c2c;
+        }
+
+        /* ── Status messages ── */
+        .status-msg {
+            margin-top: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            min-height: 20px;
+        }
+        .status-msg.success { color: #1e7d3b; }
+        .status-msg.error   { color: #c0392b; }
+        .status-msg.info    { color: #555;    }
+
+        /* ── Divider ── */
+        .section-divider {
+            border: none;
+            border-top: 1px dashed #d0d7e4;
+            margin: 22px 0;
+        }
+
+        /* ── Info box ── */
+        .info-box {
+            background: #eaf3ff;
+            border-left: 4px solid #0056b3;
+            padding: 10px 14px;
+            border-radius: 0 6px 6px 0;
+            font-size: 13px;
+            color: #1a3a5c;
+            margin-bottom: 16px;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>SAP Procurement Annexure Generator</h2>
-    
+    <h2>⚙️ SAP Procurement Annexure Generator</h2>
+
+    <!-- ══════════════════════════════════════════
+         STEP 1 — Upload SAP Files
+    ══════════════════════════════════════════ -->
     <div id="step-1" class="step-panel active-step">
-        <h3>Step 1: Upload SAP Data</h3>
-        <p>Upload your raw SAP export sheets to establish the database.</p>
+        <h3>Step 1 — Upload SAP Data Files</h3>
+        <p style="font-size:13px; color:#555; margin-top:0;">
+            Upload your raw SAP export sheets. The ZMMMATHIST file is mandatory;
+            ME2M is optional but recommended.
+        </p>
+
         <div class="file-group">
-            <label for="zmmFile">ZMMMATHIST File (.xlsx / .csv) *</label>
-            <input type="file" id="zmmFile" accept=".xlsx, .xls, .csv">
+            <label for="zmmFile">
+                ZMMMATHIST File (.xlsx / .xls / .csv) *
+                <small>Material history, stock, consumption, pipeline POs/PRs</small>
+            </label>
+            <input type="file" id="zmmFile" accept=".xlsx,.xls,.csv">
         </div>
+
         <div class="file-group">
-            <label for="me2mFile">ME2M File (.xlsx / .csv) [Optional]</label>
-            <input type="file" id="me2mFile" accept=".xlsx, .xls, .csv">
+            <label for="me2mFile">
+                ME2M File (.xlsx / .xls / .csv) [Optional]
+                <small>Open purchase orders / purchase requisitions</small>
+            </label>
+            <input type="file" id="me2mFile" accept=".xlsx,.xls,.csv">
         </div>
-        <button id="scanBtn">Scan SAP Files</button>
-        <div id="scanStatus" id="status"></div>
+
+        <button id="scanBtn" class="btn btn-primary">🔍 Scan SAP Files</button>
+        <div id="scanStatus" class="status-msg info"></div>
     </div>
 
+    <!-- ══════════════════════════════════════════
+         STEP 2 — Verify & Generate
+    ══════════════════════════════════════════ -->
     <div id="step-2" class="step-panel">
-        <h3>Step 2: Verify Master PR List</h3>
-        <div id="scanResult" style="color: green; font-weight: bold; margin-bottom: 10px;"></div>
-        <div id="materialTags" style="margin-bottom: 20px; max-height: 150px; overflow-y: auto;"></div>
+        <h3>Step 2 — Verify Master Material List &amp; Generate</h3>
+
+        <div id="scanResult" class="info-box"></div>
+
+        <label>Materials found in SAP files:</label>
+        <div id="materialTags"></div>
 
         <div class="file-group">
-            <label for="anchorList">Are any materials missing from the list above?</label>
-            <small style="color: #666; margin-bottom: 5px;">Copy your entire column of Material Codes from your original PR and paste it here. We will merge and deduplicate it automatically.</small>
-            <textarea id="anchorList" rows="6" placeholder="Paste material codes here...&#10;M123456789&#10;M987654321"></textarea>
+            <label for="anchorList">
+                Add / override material codes (optional)
+                <small>
+                    Paste your full PR material column here.
+                    We will merge with SAP data and deduplicate automatically.
+                </small>
+            </label>
+            <textarea id="anchorList" rows="5"
+                placeholder="Paste material codes here (one per line or comma-separated)&#10;e.g.&#10;10000123&#10;10000456"></textarea>
         </div>
 
-        <button id="generateBtn" class="btn-success">Generate Annexure B</button>
-        <div id="genStatus" id="status"></div>
+        <hr class="section-divider">
+
+        <div class="generate-row">
+            <button id="generateABtn" class="btn btn-annexure">📄 Generate Annexure A</button>
+            <button id="generateBBtn" class="btn btn-success">📋 Generate Annexure B</button>
+        </div>
+
+        <div id="genStatus" class="status-msg info"></div>
     </div>
 </div>
 
+<!-- ═══════════════════════════════════════════════════════════════
+     SCRIPTS  —  load rules before processor
+════════════════════════════════════════════════════════════════ -->
 <script src="mappingRules.js"></script>
 <script src="processor.js"></script>
+
 <script>
-    // Global State Variables
-    let parsedZmmData = [];
-    let parsedMe2mData = [];
-    let sapUniqueMaterials = new Set();
+// ─────────────────────────────────────────────
+// GLOBAL STATE
+// ─────────────────────────────────────────────
+let parsedZmmData       = [];
+let parsedMe2mData      = [];
+let sapUniqueMaterials  = new Set();
 
-    // Utility: Parse Excel to JSON
-    function parseExcelToJson(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-                const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
-                resolve(json);
-            };
-            reader.onerror = (err) => reject(err);
-            reader.readAsArrayBuffer(file);
-        });
+// ─────────────────────────────────────────────
+// UTILITY
+// ─────────────────────────────────────────────
+function parseExcelToJson(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const data     = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const ws       = workbook.Sheets[workbook.SheetNames[0]];
+            const json     = XLSX.utils.sheet_to_json(ws, { defval: '' });
+            resolve(json);
+        };
+        reader.onerror = (err) => reject(err);
+        reader.readAsArrayBuffer(file);
+    });
+}
+
+function setStatus(elementId, message, type = 'info') {
+    const el = document.getElementById(elementId);
+    el.textContent  = message;
+    el.className    = `status-msg ${type}`;
+}
+
+function getMasterList() {
+    const rawText       = document.getElementById('anchorList').value;
+    const pastedMats    = rawText.split(/[\s,;]+/).map(s => s.trim()).filter(Boolean);
+    const merged        = new Set([...sapUniqueMaterials, ...pastedMats]);
+    return Array.from(merged).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+}
+
+// ─────────────────────────────────────────────
+// STEP 1 — SCAN
+// ─────────────────────────────────────────────
+document.getElementById('scanBtn').addEventListener('click', async () => {
+    const zmmFile  = document.getElementById('zmmFile').files[0];
+    const me2mFile = document.getElementById('me2mFile').files[0];
+
+    if (!zmmFile) {
+        setStatus('scanStatus', '⚠️ Error: ZMMMATHIST file is mandatory.', 'error');
+        return;
     }
 
-    // STATE 1: Scan Button Clicked
-    document.getElementById('scanBtn').addEventListener('click', async () => {
-        const zmmFile = document.getElementById('zmmFile').files[0];
-        const me2mFile = document.getElementById('me2mFile').files[0];
-        const statusDiv = document.getElementById('scanStatus');
+    setStatus('scanStatus', '⏳ Scanning files…', 'info');
+    document.getElementById('scanBtn').disabled = true;
 
-        if (!zmmFile) {
-            statusDiv.innerHTML = "<span style='color:red;'>Error: ZMMMATHIST file is mandatory.</span>";
-            return;
-        }
+    try {
+        parsedZmmData  = await parseExcelToJson(zmmFile);
+        parsedMe2mData = me2mFile ? await parseExcelToJson(me2mFile) : [];
 
-        statusDiv.innerText = "Scanning files...";
-        document.getElementById('scanBtn').disabled = true;
+        sapUniqueMaterials.clear();
+        [...parsedZmmData, ...parsedMe2mData].forEach(row => {
+            const mat = String(row['Material'] || '').trim();
+            if (mat) sapUniqueMaterials.add(mat);
+        });
 
-        try {
-            parsedZmmData = await parseExcelToJson(zmmFile);
-            parsedMe2mData = me2mFile ? await parseExcelToJson(me2mFile) : [];
+        // Render badges
+        const tagsContainer = document.getElementById('materialTags');
+        tagsContainer.innerHTML = Array.from(sapUniqueMaterials)
+            .sort()
+            .map(m => `<span class="material-badge">${m}</span>`)
+            .join('');
 
-            // Extract unique materials from SAP files
-            sapUniqueMaterials.clear();
-            [...parsedZmmData, ...parsedMe2mData].forEach(row => {
-                const mat = String(row['Material'] || '').trim();
-                if (mat) sapUniqueMaterials.add(mat);
-            });
+        document.getElementById('scanResult').textContent =
+            `✅ Scan complete — ${sapUniqueMaterials.size} unique material(s) found across ${parsedZmmData.length} ZMM rows` +
+            (parsedMe2mData.length ? ` and ${parsedMe2mData.length} ME2M rows.` : '.');
 
-            // Populate UI for Step 2
-            const tagsContainer = document.getElementById('materialTags');
-            tagsContainer.innerHTML = Array.from(sapUniqueMaterials)
-                .sort()
-                .map(m => `<span class="material-badge">${m}</span>`)
-                .join('');
-            
-            document.getElementById('scanResult').innerText = `✅ Found ${sapUniqueMaterials.size} unique materials in SAP.`;
+        document.getElementById('step-1').classList.remove('active-step');
+        document.getElementById('step-2').classList.add('active-step');
 
-            // Transition UI
-            document.getElementById('step-1').classList.remove('active-step');
-            document.getElementById('step-2').classList.add('active-step');
+    } catch (err) {
+        console.error(err);
+        setStatus('scanStatus', `❌ Scan failed: ${err.message}`, 'error');
+        document.getElementById('scanBtn').disabled = false;
+    }
+});
 
-        } catch (error) {
-            console.error(error);
-            statusDiv.innerHTML = `<span style='color:red;'>Scan failed: ${error.message}</span>`;
-            document.getElementById('scanBtn').disabled = false;
-        }
+// ─────────────────────────────────────────────
+// STEP 2A — GENERATE ANNEXURE A
+// ─────────────────────────────────────────────
+document.getElementById('generateABtn').addEventListener('click', async () => {
+    const finalMasterList = getMasterList();
+
+    if (finalMasterList.length === 0) {
+        setStatus('genStatus', '⚠️ No material codes found. Paste codes or re-scan.', 'error');
+        return;
+    }
+
+    setStatus('genStatus', '⏳ Building Annexure A…', 'info');
+    document.getElementById('generateABtn').disabled = true;
+
+    try {
+        const result = generateAnnexureAData(finalMasterList, parsedZmmData, parsedMe2mData);
+        await exportAnnexureAExcel(result, finalMasterList);
+        setStatus('genStatus',
+            `✅ Annexure A generated — ${finalMasterList.length} item(s) written.`, 'success');
+    } catch (err) {
+        console.error(err);
+        setStatus('genStatus', `❌ Annexure A error: ${err.message}`, 'error');
+    } finally {
+        document.getElementById('generateABtn').disabled = false;
+    }
+});
+
+// ─────────────────────────────────────────────
+// STEP 2B — GENERATE ANNEXURE B
+// ─────────────────────────────────────────────
+document.getElementById('generateBBtn').addEventListener('click', async () => {
+    const finalMasterList = getMasterList();
+
+    if (finalMasterList.length === 0) {
+        setStatus('genStatus', '⚠️ No material codes found. Paste codes or re-scan.', 'error');
+        return;
+    }
+
+    setStatus('genStatus', '⏳ Building Annexure B…', 'info');
+    document.getElementById('generateBBtn').disabled = true;
+
+    try {
+        const dataArray = generateAnnexureBWorkbook(finalMasterList, parsedZmmData, parsedMe2mData);
+        await exportAnnexureBExcel(dataArray);
+        setStatus('genStatus',
+            `✅ Annexure B generated — ${finalMasterList.length} item(s) written.`, 'success');
+    } catch (err) {
+        console.error(err);
+        setStatus('genStatus', `❌ Annexure B error: ${err.message}`, 'error');
+    } finally {
+        document.getElementById('generateBBtn').disabled = false;
+    }
+});
+
+
+// ═══════════════════════════════════════════════════════════════
+// ANNEXURE A  —  EXCEL EXPORT ENGINE
+// Matches schema exactly:
+//   A1:M1  — Title (green bg #92D050, bold 12, center)
+//   A2:M2  — Plant/title placeholder (bold 12, left)
+//   A3:G3  — PR No./Date (bold 12, left)
+//   A4:G4  — Estimated Value (bold 12, left)
+//   A5:G5  — PR ECM No. (bold 12, left)
+//   A6:M7  — Two-row header block (yellow bg #FFFF00, bold 11, center, thin border)
+//   A8+    — Data rows (thin border, center)
+//   TOTAL  — Yellow bg, bold, SUM formula in M
+// ═══════════════════════════════════════════════════════════════
+async function exportAnnexureAExcel(result, masterList) {
+    const wb    = new ExcelJS.Workbook();
+    const sheet = wb.addWorksheet('ESTIMATION');
+
+    const { dataRows, totalRow, dataStartRow, totalRowNumber } = result;
+
+    // ── Helpers ──────────────────────────────
+    const YELLOW = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
+    const GREEN  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF92D050' } };
+    const THIN   = { style: 'thin' };
+    const ALL_BORDERS = { top: THIN, left: THIN, bottom: THIN, right: THIN };
+
+    function boldFont(size = 11) { return { name: 'Calibri', bold: true, size }; }
+    function normalFont(size = 11) { return { name: 'Calibri', bold: false, size }; }
+
+    function setCell(coord, value, opts = {}) {
+        const cell = sheet.getCell(coord);
+        cell.value = value;
+        if (opts.font)      cell.font      = opts.font;
+        if (opts.fill)      cell.fill      = opts.fill;
+        if (opts.alignment) cell.alignment = opts.alignment;
+        if (opts.border)    cell.border    = opts.border;
+        if (opts.numFmt)    cell.numFmt    = opts.numFmt;
+    }
+
+    // ── Row 1: Title ─────────────────────────
+    sheet.mergeCells('A1:M1');
+    setCell('A1', 'ANNEXURE-A : Estimation Sheet', {
+        font:      boldFont(12),
+        fill:      GREEN,
+        alignment: { horizontal: 'center', vertical: 'middle' },
+    });
+    sheet.getRow(1).height = 15.6;
+
+    // ── Row 2: Plant / Work Centre placeholder ─
+    sheet.mergeCells('A2:M2');
+    setCell('A2', 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX', {
+        font:      boldFont(12),
+        alignment: { horizontal: 'left', vertical: 'middle' },
+    });
+    sheet.getRow(2).height = 15.6;
+
+    // ── Row 3: PR No. / Date ──────────────────
+    sheet.mergeCells('A3:G3');
+    setCell('A3', 'PR No. :XXXXXXXXX , Date: XXXXXXX', {
+        font:      boldFont(12),
+        alignment: { horizontal: 'left', vertical: 'middle' },
+    });
+    sheet.getRow(3).height = 15.6;
+
+    // ── Row 4: Estimated Value ────────────────
+    sheet.mergeCells('A4:G4');
+    setCell('A4', 'Estimated Value : Rs. XXXXXXX', {
+        font:      boldFont(12),
+        alignment: { horizontal: 'left', vertical: 'middle' },
+    });
+    sheet.getRow(4).height = 15.6;
+
+    // ── Row 5: PR ECM No. ─────────────────────
+    sheet.mergeCells('A5:G5');
+    setCell('A5', 'PR ECM No. : XXXXXXXXXXXXXXXXXXXXXXX', {
+        font:      boldFont(12),
+        alignment: { horizontal: 'left', vertical: 'middle', wrapText: true },
+    });
+    sheet.getRow(5).height = 15.6;
+
+    // ── Rows 6–7: Column headers ──────────────
+    // All header columns span rows 6:7 (merged vertically)
+    const headers = [
+        { col: 'A', label: 'S No.' },
+        { col: 'B', label: 'Material' },
+        { col: 'C', label: 'Material Description' },
+        { col: 'D', label: 'Population' },
+        { col: 'E', label: 'Stock Qty' },
+        { col: 'F', label: 'Qty requested' },
+        { col: 'G', label: 'Unit of Measure' },
+        { col: 'H', label: 'Last PO No.' },
+        { col: 'I', label: 'Last PO date' },
+        { col: 'J', label: 'LPP' },
+        { col: 'K', label: 'Budgetary offer' },
+        { col: 'L', label: 'Estimated Rate' },
+        { col: 'M', label: 'Total Value' },
+    ];
+
+    headers.forEach(({ col, label }) => {
+        sheet.mergeCells(`${col}6:${col}7`);
+        setCell(`${col}6`, label, {
+            font:      boldFont(11),
+            fill:      YELLOW,
+            alignment: { horizontal: 'center', vertical: 'middle', wrapText: true },
+            border:    ALL_BORDERS,
+        });
     });
 
-    // STATE 2: Generate Button Clicked
-    document.getElementById('generateBtn').addEventListener('click', async () => {
-        const statusDiv = document.getElementById('genStatus');
-        statusDiv.innerText = "Reconciling master list...";
+    sheet.getRow(6).height = 20;
+    sheet.getRow(7).height = 20;
 
-        // 1. Get Pasted Data
-        const rawText = document.getElementById('anchorList').value;
-        const pastedMaterials = rawText.split(/[\s,]+/).map(s => s.trim()).filter(Boolean);
+    // ── Data rows ─────────────────────────────
+    dataRows.forEach((rowData, i) => {
+        const excelRow = dataStartRow + i;
+        const row      = sheet.getRow(excelRow);
+        row.height     = 15;
 
-        // 2. Merge & Deduplicate (SAP + Pasted)
-        const masterSet = new Set([...sapUniqueMaterials, ...pastedMaterials]);
-        const finalMasterList = Array.from(masterSet).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+        rowData.forEach((value, colIdx) => {
+            const cell      = row.getCell(colIdx + 1);
+            cell.value      = value;
+            cell.font       = normalFont(11);
+            cell.alignment  = { horizontal: 'center', vertical: 'middle', wrapText: true };
+            cell.border     = ALL_BORDERS;
 
-        if (finalMasterList.length === 0) {
-            statusDiv.innerHTML = "<span style='color:red;'>Error: No material codes found to process.</span>";
-            return;
-        }
-
-        try {
-            statusDiv.innerText = "Processing logic engine...";
-            const finalDataArray = generateAnnexureBWorkbook(finalMasterList, parsedZmmData, parsedMe2mData);
-
-            statusDiv.innerText = "Applying schema formatting...";
-            await exportFormattedExcel(finalDataArray);
-
-            statusDiv.innerHTML = `<span style='color:green;'>Success! Annexure B generated for ${finalMasterList.length} items.</span>`;
-        } catch (error) {
-            console.error(error);
-            statusDiv.innerHTML = `<span style='color:red;'>Error generating file: ${error.message}</span>`;
-        }
+            // M column (index 12): Total Value formula — set number format
+            if (colIdx === 12 && typeof value === 'string' && value.startsWith('=')) {
+                cell.numFmt = '"₹"\\ #,##0.00';
+            }
+        });
     });
 
-    // Excel Formatting Engine
-    async function exportFormattedExcel(dataArray) {
-        const workbook = new ExcelJS.Workbook();
-        const sheet = workbook.addWorksheet("Annexure B");
+    // ── TOTAL row ─────────────────────────────
+    sheet.mergeCells(`A${totalRowNumber}:L${totalRowNumber}`);
+    const totalCell = sheet.getCell(`A${totalRowNumber}`);
+    totalCell.value     = 'TOTAL';
+    totalCell.font      = boldFont(11);
+    totalCell.fill      = YELLOW;
+    totalCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    totalCell.border    = { top: THIN };
 
-        sheet.addRows(dataArray);
+    const sumCell   = sheet.getCell(`M${totalRowNumber}`);
+    sumCell.value   = `=SUM(M${dataStartRow}:M${totalRowNumber - 1})`;
+    sumCell.font    = boldFont(12);
+    sumCell.fill    = YELLOW;
+    sumCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    sumCell.numFmt  = '"₹"\\ #,##0.00';
 
-        const totalRows = sheet.rowCount;
-        const footerStartRow = totalRows - 2;
+    sheet.getRow(totalRowNumber).height = 15.6;
 
-        sheet.mergeCells('A1:W1'); 
-        sheet.mergeCells('A2:W2'); 
-        sheet.mergeCells('A3:E3'); 
-        sheet.mergeCells('F3:W3'); 
+    // ── Column widths (match schema exactly) ──
+    sheet.getColumn('A').width = 7;
+    sheet.getColumn('B').width = 17.66;
+    sheet.getColumn('C').width = 46.89;
+    sheet.getColumn('D').width = 12.44;
+    sheet.getColumn('E').width = 12.55;
+    sheet.getColumn('F').width = 10.89;
+    sheet.getColumn('G').width = 21.33;
+    sheet.getColumn('H').width = 15.11;
+    sheet.getColumn('I').width = 13.33;
+    sheet.getColumn('J').width = 20.66;
+    sheet.getColumn('K').width = 23.89;
+    sheet.getColumn('L').width = 16.11;
+    sheet.getColumn('M').width = 26.44;
 
-        const verticalCols = ['A','B','C','D','E','F','G','H','I','J','P','U','V','W'];
-        verticalCols.forEach(col => sheet.mergeCells(`${col}5:${col}6`));
+    // ── Write & save ──────────────────────────
+    const buffer = await wb.xlsx.writeBuffer();
+    saveAs(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
+        'Annexure_A_Estimation_Sheet.xlsx');
+}
 
-        sheet.mergeCells('K5:O5'); 
-        sheet.mergeCells('Q5:R5'); 
-        sheet.mergeCells('S5:T5'); 
 
-        sheet.mergeCells(`A${footerStartRow}:W${footerStartRow}`);         
-        sheet.mergeCells(`B${footerStartRow + 1}:W${footerStartRow + 1}`); 
-        sheet.mergeCells(`B${footerStartRow + 2}:W${footerStartRow + 2}`); 
+// ═══════════════════════════════════════════════════════════════
+// ANNEXURE B  —  EXCEL EXPORT ENGINE  (unchanged logic)
+// ═══════════════════════════════════════════════════════════════
+async function exportAnnexureBExcel(dataArray) {
+    const workbook = new ExcelJS.Workbook();
+    const sheet    = workbook.addWorksheet('Annexure B');
 
-        sheet.eachRow((row, rowNumber) => {
-            row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-                if (rowNumber < footerStartRow) {
-                    cell.border = {
-                        top: {style:'thin'}, left: {style:'thin'}, 
-                        bottom: {style:'thin'}, right: {style:'thin'}
-                    };
-                    cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+    sheet.addRows(dataArray);
 
-                    if (rowNumber <= 6) {
-                        cell.font = { bold: true };
-                        cell.fill = { type: 'pattern', pattern:'solid', fgColor:{argb:'FFF2F2F2'} };
-                    }
-                } else {
-                    cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
-                    if (rowNumber === footerStartRow + 1 && colNumber === 1) cell.font = { bold: true };
+    const totalRows      = sheet.rowCount;
+    const footerStartRow = totalRows - 2;
+
+    // ── Merges ──────────────────────────────
+    sheet.mergeCells('A1:W1');
+    sheet.mergeCells('A2:W2');
+    sheet.mergeCells('A3:E3');
+    sheet.mergeCells('F3:W3');
+
+    const verticalCols = ['A','B','C','D','E','F','G','H','I','J','P','U','V','W'];
+    verticalCols.forEach(col => sheet.mergeCells(`${col}5:${col}6`));
+
+    sheet.mergeCells('K5:O5');
+    sheet.mergeCells('Q5:R5');
+    sheet.mergeCells('S5:T5');
+
+    sheet.mergeCells(`A${footerStartRow}:W${footerStartRow}`);
+    sheet.mergeCells(`B${footerStartRow + 1}:W${footerStartRow + 1}`);
+    sheet.mergeCells(`B${footerStartRow + 2}:W${footerStartRow + 2}`);
+
+    // ── Styles ──────────────────────────────
+    sheet.eachRow((row, rowNumber) => {
+        row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+            if (rowNumber < footerStartRow) {
+                cell.border = {
+                    top:    { style: 'thin' },
+                    left:   { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right:  { style: 'thin' },
+                };
+                cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+
+                if (rowNumber <= 6) {
+                    cell.font = { bold: true };
+                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
                 }
-            });
+            } else {
+                cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+                if (rowNumber === footerStartRow + 1 && colNumber === 1) {
+                    cell.font = { bold: true };
+                }
+            }
         });
+    });
 
-        sheet.columns.forEach(col => { col.width = 12; });
-        sheet.getColumn('D').width = 35; 
-        sheet.getColumn('W').width = 35; 
+    sheet.columns.forEach(col => { col.width = 12; });
+    sheet.getColumn('D').width = 35;
+    sheet.getColumn('W').width = 35;
 
-        const buffer = await workbook.xlsx.writeBuffer();
-        saveAs(new Blob([buffer]), "Annexure_B_Automated.xlsx");
-    }
+    const buffer = await workbook.xlsx.writeBuffer();
+    saveAs(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
+        'Annexure_B_Automated.xlsx');
+}
 </script>
 </body>
 </html>
