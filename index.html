@@ -39,14 +39,12 @@
         h3 { color: #003d8f; margin-bottom: 10px; font-size: 16px; }
 
         .step-panel {
-            display: none;
             padding: 22px 24px;
             background: #f9fafc;
             border: 1px solid #dde3ec;
             border-radius: 8px;
             margin-top: 22px;
         }
-        .step-panel.active-step { display: block; }
 
         .file-group {
             margin-bottom: 18px;
@@ -183,7 +181,7 @@
     <!-- ══════════════════════════════════════════
          STEP 1 — Upload SAP Files
     ══════════════════════════════════════════ -->
-    <div id="step-1" class="step-panel active-step">
+    <div id="step-1" class="step-panel">
         <h3>Step 1 — Upload SAP Data Files</h3>
         <p style="font-size:13px; color:#555; margin-top:0;">
             Upload your raw SAP export sheets. The ZMMMATHIST file is mandatory;
@@ -214,12 +212,14 @@
          STEP 2 — Verify & Generate
     ══════════════════════════════════════════ -->
     <div id="step-2" class="step-panel">
-        <h3>Step 2 — Verify Master Material List &amp; Generate</h3>
+        <h3>Step 2 — Generate Annexures</h3>
 
-        <div id="scanResult" class="info-box"></div>
+        <div id="scanResult" class="info-box" style="display:none;"></div>
 
-        <label>Materials found in SAP files:</label>
-        <div id="materialTags"></div>
+        <div id="materialTagsWrapper" style="display:none;">
+            <label>Materials found in SAP files:</label>
+            <div id="materialTags"></div>
+        </div>
 
         <div class="file-group">
             <label for="anchorList">
@@ -321,12 +321,13 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
             .map(m => `<span class="material-badge">${m}</span>`)
             .join('');
 
-        document.getElementById('scanResult').textContent =
+        const scanResult = document.getElementById('scanResult');
+        scanResult.style.display = 'block';
+        scanResult.textContent =
             `✅ Scan complete — ${sapUniqueMaterials.size} unique material(s) found across ${parsedZmmData.length} ZMM rows` +
             (parsedMe2mData.length ? ` and ${parsedMe2mData.length} ME2M rows.` : '.');
 
-        document.getElementById('step-1').classList.remove('active-step');
-        document.getElementById('step-2').classList.add('active-step');
+        document.getElementById('materialTagsWrapper').style.display = 'block';
 
     } catch (err) {
         console.error(err);
@@ -340,11 +341,6 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
 // ─────────────────────────────────────────────
 document.getElementById('generateABtn').addEventListener('click', async () => {
     const finalMasterList = getMasterList();
-
-    if (finalMasterList.length === 0) {
-        setStatus('genStatus', '⚠️ No material codes found. Paste codes or re-scan.', 'error');
-        return;
-    }
 
     setStatus('genStatus', '⏳ Building Annexure A…', 'info');
     document.getElementById('generateABtn').disabled = true;
@@ -367,11 +363,6 @@ document.getElementById('generateABtn').addEventListener('click', async () => {
 // ─────────────────────────────────────────────
 document.getElementById('generateBBtn').addEventListener('click', async () => {
     const finalMasterList = getMasterList();
-
-    if (finalMasterList.length === 0) {
-        setStatus('genStatus', '⚠️ No material codes found. Paste codes or re-scan.', 'error');
-        return;
-    }
 
     setStatus('genStatus', '⏳ Building Annexure B…', 'info');
     document.getElementById('generateBBtn').disabled = true;
