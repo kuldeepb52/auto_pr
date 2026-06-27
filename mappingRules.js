@@ -1,16 +1,6 @@
 /**
- * ============================================================
- * MAPPING RULES  —  Annexure A & Annexure B
- * ============================================================
- */
-
-// ─────────────────────────────────────────────
-// SHARED UTILITY FUNCTIONS
-// ─────────────────────────────────────────────
-
-/**
  * INDUSTRIAL ROBUST KEY EXTRACTOR
- * Normalises keys to ignore SAP space-padding and column dots.
+ * Normalizes keys to ignore variations in SAP space padding or column dots.
  */
 function getValueByFlexibleKey(row, substringMatch) {
     if (!row) return '';
@@ -31,17 +21,17 @@ function parseSapNumeric(value) {
 
 /**
  * BULLETPROOF SAP / EXCEL DATE FIXER
- * Handles Excel serials, SAP YYYYMMDD, and standard date strings.
+ * Catches Excel serials (number or string), SAP YYYYMMDD strings, and standard dates.
  */
 function formatSapDate(val) {
     if (val === undefined || val === null || val === '') return '';
-
+    
     let strVal = String(val).trim();
-
-    // 1. Excel Serial Numbers (e.g. 45366)
+    
+    // 1. Catch Excel Serial Numbers (e.g. 45366 or 45366.5)
     if (/^\d{5}(\.\d+)?$/.test(strVal)) {
         const numVal = parseFloat(strVal);
-        if (numVal > 40000 && numVal < 60000) {
+        if (numVal > 40000 && numVal < 60000) { 
             const dateObj = new Date(Math.round((numVal - 25569) * 86400 * 1000));
             const d = String(dateObj.getUTCDate()).padStart(2, '0');
             const m = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
@@ -50,7 +40,7 @@ function formatSapDate(val) {
         }
     }
 
-    // 2. SAP Raw Internal Format YYYYMMDD
+    // 2. Catch SAP Raw Internal Format (YYYYMMDD) e.g., "20240315"
     if (/^\d{8}$/.test(strVal)) {
         const y = strVal.substring(0, 4);
         const m = strVal.substring(4, 6);
@@ -58,12 +48,12 @@ function formatSapDate(val) {
         return `${d}.${m}.${y}`;
     }
 
-    // 3. DD.MM.YYYY / DD/MM/YYYY / DD-MM-YYYY
+    // 3. Catch DD.MM.YYYY, DD/MM/YYYY, or DD-MM-YYYY and normalize to dots
     if (/^\d{2}[\.\/\-]\d{2}[\.\/\-]\d{4}$/.test(strVal)) {
-        return strVal.replace(/[\/\-]/g, '.');
+        return strVal.replace(/[\/\-]/g, '.'); 
     }
 
-    // 4. Standard web date formats (YYYY-MM-DD or MM/DD/YYYY)
+    // 4. Catch standard web date formats (YYYY-MM-DD or MM/DD/YYYY)
     const parsedDate = new Date(strVal);
     if (!isNaN(parsedDate.getTime())) {
         const d = String(parsedDate.getDate()).padStart(2, '0');
@@ -72,93 +62,15 @@ function formatSapDate(val) {
         return `${d}.${m}.${y}`;
     }
 
-    // 5. Fallback: return as-is
+    // 5. Failsafe: If it is completely unrecognized text, just return it as is
     return strVal;
 }
-
-
-// ─────────────────────────────────────────────
-// ANNEXURE A  — ESTIMATION SHEET RULES
-// ─────────────────────────────────────────────
-
-/**
- * Column map (A=1 … M=13):
- *  A  S No.
- *  B  Material (code)
- *  C  Material Description
- *  D  Population
- *  E  Stock Qty
- *  F  Qty requested
- *  G  Unit of Measure
- *  H  Last PO No.
- *  I  Last PO date
- *  J  LPP  (Last Purchase Price)
- *  K  Budgetary offer
- *  L  Estimated Rate
- *  M  Total Value  (formula: L * F)
- */
-const AnnexureA_Rules = {
-
-    getSerialNumber: (idx) => idx,
-
-    getMaterialCode: (materialCode) => materialCode,
-
-    // Col C — Description from ZMM (first record)
-    getDescription: (zmmRecords) => {
-        if (!zmmRecords || zmmRecords.length === 0) return '[DESCRIPTION NOT FOUND]';
-        return String(getValueByFlexibleKey(zmmRecords[0], 'description')).trim();
-    },
-
-    // Col D — Population (blank — indentor fills)
-    getPopulation: () => '',
-
-    // Col E — Stock Qty from ZMM
-    getStockQty: (zmmRecords) => {
-        if (!zmmRecords || zmmRecords.length === 0) return 0;
-        return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'stock'));
-    },
-
-    // Col F — Qty requested (blank — indentor fills)
-    getQtyRequested: () => '',
-
-    // Col G — Unit of Measure from ZMM
-    getUnitOfMeasure: (zmmRecords) => {
-        if (!zmmRecords || zmmRecords.length === 0) return '';
-        return String(getValueByFlexibleKey(zmmRecords[0], 'unit') ||
-                      getValueByFlexibleKey(zmmRecords[0], 'uom')  ||
-                      getValueByFlexibleKey(zmmRecords[0], 'baseu')).trim();
-    },
-
-    // Col H — Last PO No. (blank — indentor fills / future mapping)
-    getLastPoNo: () => '',
-
-    // Col I — Last PO date (blank — indentor fills / future mapping)
-    getLastPoDate: () => '',
-
-    // Col J — LPP  (blank — indentor fills / future mapping)
-    getLPP: () => '',
-
-    // Col K — Budgetary offer (blank — indentor fills)
-    getBudgetaryOffer: () => '',
-
-    // Col L — Estimated Rate (blank — indentor fills)
-    getEstimatedRate: () => '',
-
-    // Col M — Total Value: Excel formula  =L{row}*F{row}
-    // (row number is injected by the exporter)
-    getTotalValueFormula: (excelRowNumber) => `=L${excelRowNumber}*F${excelRowNumber}`,
-};
-
-
-// ─────────────────────────────────────────────
-// ANNEXURE B  — MATERIAL PROCUREMENT JUSTIFICATION RULES
-// ─────────────────────────────────────────────
 
 const AnnexureB_Rules = {
     getSerialNumber: (serialNumber) => serialNumber,
     getMaterialCode: (materialCode) => materialCode,
     getOldMaterialCode: () => '',
-
+    
     // Column 4: Item Description
     getItemDescription: (zmmRecords, me2mRecords) => {
         if (!zmmRecords || zmmRecords.length === 0) return '[DESCRIPTION NOT FOUND IN SAP]';
@@ -178,7 +90,7 @@ const AnnexureB_Rules = {
     getMandatorySpareQty: () => '',
     getNormalLife: () => '',
 
-    // Columns 11-15: Five-Year Consumption Grid
+    // Column 11: Five Year Consumption Grid Logic (Columns K to O)
     getConsumptionYr4: (zmmRecords) => {
         if (!zmmRecords || zmmRecords.length === 0) return 0;
         return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'yr-4'));
@@ -197,80 +109,95 @@ const AnnexureB_Rules = {
     },
     getConsumptionCurrYr: (zmmRecords) => {
         if (!zmmRecords || zmmRecords.length === 0) return 0;
-        return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'currfin.year')) ||
+        return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'currfin.year')) || 
                parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'currfinyear'));
     },
 
     getFailureRate: () => '',
 
-    // Column Q: Pipeline PO No & Date
+    // Column 12 (Excel Column Q): Pipeline PO No & Date from ZMMMATHIST
     getPipelinePoNoDate: (zmmRecords) => {
         if (!zmmRecords || zmmRecords.length === 0) return 'NA';
+        
+        const poRows = zmmRecords.filter(r => {
+            const docType = String(getValueByFlexibleKey(r, 'doc.type')).trim().toLowerCase();
+            return docType === 'poitem';
+        });
+        
+        if (poRows.length === 0) return 'NA';
+
+        const formattedPOs = poRows.map(row => {
+            const docDetail = String(getValueByFlexibleKey(row, 'doc.detail')).trim();
+            const poNumber = docDetail.split('/')[0].trim();
+            
+            // Extract and format Date
+            const rawReqDate = getValueByFlexibleKey(row, 'req.date');
+            const reqDate = formatSapDate(rawReqDate);
+            
+            return (poNumber && reqDate) ? `${poNumber} / ${reqDate}` : poNumber;
+        }).filter(Boolean);
+
+        return formattedPOs.length > 0 ? formattedPOs.join('\n') : 'NA';
+    },
+
+    // Column 13 (Excel Column R): Pipeline PO Quantity from ZMMMATHIST
+    getPipelinePoQty: (zmmRecords) => {
+        if (!zmmRecords || zmmRecords.length === 0) return 0;
 
         const poRows = zmmRecords.filter(r => {
             const docType = String(getValueByFlexibleKey(r, 'doc.type')).trim().toLowerCase();
             return docType === 'poitem';
         });
 
-        if (poRows.length === 0) return 'NA';
-
-        const formatted = poRows.map(row => {
-            const docDetail = String(getValueByFlexibleKey(row, 'doc.detail')).trim();
-            const poNumber  = docDetail.split('/')[0].trim();
-            const reqDate   = formatSapDate(getValueByFlexibleKey(row, 'req.date'));
-            return (poNumber && reqDate) ? `${poNumber} / ${reqDate}` : poNumber;
-        }).filter(Boolean);
-
-        return formatted.length > 0 ? formatted.join('\n') : 'NA';
+        return poRows.reduce((sum, row) => {
+            return sum + parseSapNumeric(getValueByFlexibleKey(row, 'quantity'));
+        }, 0);
     },
 
-    // Column R: Pipeline PO Quantity
-    getPipelinePoQty: (zmmRecords) => {
-        if (!zmmRecords || zmmRecords.length === 0) return 0;
-
-        const poRows = zmmRecords.filter(r =>
-            String(getValueByFlexibleKey(r, 'doc.type')).trim().toLowerCase() === 'poitem'
-        );
-
-        return poRows.reduce((sum, row) =>
-            sum + parseSapNumeric(getValueByFlexibleKey(row, 'quantity')), 0);
-    },
-
-    // Column S: Pipeline PR No & Date
+    // Column 14 (Excel Column S): Pipeline PR No & Date from ZMMMATHIST
     getPipelinePrNoDate: (zmmRecords) => {
         if (!zmmRecords || zmmRecords.length === 0) return 'NA';
-
-        const prRows = zmmRecords.filter(r =>
-            String(getValueByFlexibleKey(r, 'doc.type')).trim().toLowerCase() === 'purrqs'
-        );
-
+        
+        const prRows = zmmRecords.filter(r => {
+            const docType = String(getValueByFlexibleKey(r, 'doc.type')).trim().toLowerCase();
+            return docType === 'purrqs';
+        });
+        
         if (prRows.length === 0) return 'NA';
 
-        const formatted = prRows.map(row => {
+        const formattedPRs = prRows.map(row => {
             const docDetail = String(getValueByFlexibleKey(row, 'doc.detail')).trim();
-            const prNumber  = docDetail.split('/')[0].trim();
-            const reqDate   = formatSapDate(getValueByFlexibleKey(row, 'req.date'));
+            const prNumber = docDetail.split('/')[0].trim();
+            
+            // Extract and format Date
+            const rawReqDate = getValueByFlexibleKey(row, 'req.date');
+            const reqDate = formatSapDate(rawReqDate);
+            
             return (prNumber && reqDate) ? `${prNumber} / ${reqDate}` : prNumber;
         }).filter(Boolean);
 
-        return formatted.length > 0 ? formatted.join('\n') : 'NA';
+        return formattedPRs.length > 0 ? formattedPRs.join('\n') : 'NA';
     },
 
-    // Column T: Pipeline PR Quantity
+    // Column 15 (Excel Column T): Pipeline PR Quantity from ZMMMATHIST
     getPipelinePrQty: (zmmRecords) => {
         if (!zmmRecords || zmmRecords.length === 0) return 0;
 
-        const prRows = zmmRecords.filter(r =>
-            String(getValueByFlexibleKey(r, 'doc.type')).trim().toLowerCase() === 'purrqs'
-        );
+        const prRows = zmmRecords.filter(r => {
+            const docType = String(getValueByFlexibleKey(r, 'doc.type')).trim().toLowerCase();
+            return docType === 'purrqs';
+        });
 
-        return prRows.reduce((sum, row) =>
-            sum + parseSapNumeric(getValueByFlexibleKey(row, 'quantity')), 0);
+        return prRows.reduce((sum, row) => {
+            return sum + parseSapNumeric(getValueByFlexibleKey(row, 'quantity'));
+        }, 0);
     },
 
-    getLastPoNoDate:   () => '',
+    getLastPoNoDate: () => '',
     getLastPoItemSlNo: () => '',
-
-    // Column W: Justification
-    getJustification: (zmmRecords, me2mRecords) => 'INDENTOR TO FILL',
+    
+    // Column 17 (Excel Column W): Action Required Prompt
+    getJustification: (zmmRecords, me2mRecords) => {
+        return 'INDENTOR TO FILL'; 
+    }
 };
