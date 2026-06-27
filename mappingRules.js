@@ -60,6 +60,21 @@ function formatSapDate(val) {
     return strVal;
 }
 
+/**
+ * DATE SORTER ENGINE
+ * Converts clean DD.MM.YYYY string into numerical timestamp for reliable > or < comparison
+ */
+function parseDateForSort(dateStr) {
+    if (!dateStr) return 0;
+    const formatted = formatSapDate(dateStr);
+    if (/^\d{2}\.\d{2}\.\d{4}$/.test(formatted)) {
+        const parts = formatted.split('.');
+        return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`).getTime();
+    }
+    const fallback = new Date(formatted).getTime();
+    return isNaN(fallback) ? 0 : fallback;
+}
+
 // ---------------------------------------------------------
 // ANNEXURE B LOGIC VAULT
 // ---------------------------------------------------------
@@ -145,10 +160,26 @@ const AnnexureB_Rules = {
 // ANNEXURE A LOGIC VAULT
 // ---------------------------------------------------------
 const AnnexureA_Rules = {
+    // Internal Helper to find absolute latest ME2M row by Date
+    _getLatestMe2mRecord: (me2mRecords) => {
+        if (!me2mRecords || me2mRecords.length === 0) return null;
+        let latestRow = null;
+        let maxTimestamp = -1;
+
+        me2mRecords.forEach(row => {
+            const rawDate = getValueByFlexibleKey(row, 'documentdate');
+            const timestamp = parseDateForSort(rawDate);
+            if (timestamp > maxTimestamp) {
+                maxTimestamp = timestamp;
+                latestRow = row;
+            }
+        });
+        return latestRow;
+    },
+
     getSerialNumber: (idx) => idx,
     getMaterialCode: (m) => m,
     
-    // Looks in ME2M for "Short Text", falls back to ZMM "Description"
     getItemDescription: (zmmRecords, me2mRecords) => {
         if (me2mRecords && me2mRecords.length > 0) {
             const desc = String(getValueByFlexibleKey(me2mRecords[0], 'shorttext')).trim();
@@ -163,7 +194,6 @@ const AnnexureA_Rules = {
     
     getPopulation: () => '',
     
-    // Pulls from ZMMMATHIST (Identical to Annexure B)
     getQtyInStock: (zmmRecords) => {
         if (!zmmRecords || zmmRecords.length === 0) return 0;
         return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'stock'));
@@ -171,14 +201,26 @@ const AnnexureA_Rules = {
     
     getQtyRequested: () => '',
     
-    // Pulls strictly from ME2M "Order Unit"
     getUnitOfMeasure: (me2mRecords) => {
         if (!me2mRecords || me2mRecords.length === 0) return '';
         return String(getValueByFlexibleKey(me2mRecords[0], 'orderunit')).trim();
     },
     
-    getLastPoNo: () => '',
-    getLastPoDate: () => '',
+    // Column H: Latest PO Number from ME2M
+    getLastPoNo: (me2mRecords) => {
+        const latestRow = AnnexureA_Rules._getLatestMe2mRecord(me2mRecords);
+        if (!latestRow) return 'NA';
+        return String(getValueByFlexibleKey(latestRow, 'purchasingdocument')).trim() || 'NA';
+    },
+    
+    // Column I: Latest PO Date from ME2M
+    getLastPoDate: (me2mRecords) => {
+        const latestRow = AnnexureA_Rules._getLatestMe2mRecord(me2mRecords);
+        if (!latestRow) return 'NA';
+        const rawDate = getValueByFlexibleKey(latestRow, 'documentdate');
+        return formatSapDate(rawDate) || 'NA';
+    },
+
     getLPP: () => '',
     getBudgetaryOffer: () => '',
     getEstimatedRate: () => '',
