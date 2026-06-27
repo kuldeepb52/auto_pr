@@ -151,7 +151,7 @@
                 finalDataArray = generateAnnexureBWorkbook(finalMasterList, parsedZmmData, parsedMe2mData);
                 await exportFormattedExcel(finalDataArray, docType);
             } else {
-                finalDataArray = generateAnnexureAWorkbook(finalMasterList, parsedZmmData);
+                finalDataArray = generateAnnexureAWorkbook(finalMasterList, parsedZmmData, parsedMe2mData);
                 await exportFormattedExcel(finalDataArray, docType);
             }
             statusDiv.innerHTML = `<span style='color:green;'>Success! ${docType} generated for ${finalMasterList.length} items.</span>`;
