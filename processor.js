@@ -25,7 +25,7 @@ const SCHEMA_TEMPLATES = {
         ['', '2. This sheet is required to be filled for ZSPR type materials only.']
     ],
     
-    // NEW: Annexure A Structure
+    // NEW: Annexure A Structure based on CSV Upload
     AnnexureA_TopRows: [
         ['ANNEXURE-A : Estimation Sheet'],
         ['Project / ECM Description : xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'],
@@ -81,10 +81,19 @@ function generateAnnexureAWorkbook(masterList, zmmRawData) {
     const dataRows = masterList.map((materialCode, idx) => {
         const zmmRecords = zmmRegistry.get(materialCode) || [];
         return [
-            AnnexureA_Rules.getSerialNumber(idx + 1), AnnexureA_Rules.getMaterialCode(materialCode), AnnexureA_Rules.getItemDescription(zmmRecords),
-            AnnexureA_Rules.getPopulation(), AnnexureA_Rules.getQtyInStock(zmmRecords), AnnexureA_Rules.getQtyRequested(),
-            AnnexureA_Rules.getUnitOfMeasure(), AnnexureA_Rules.getLastPoNo(), AnnexureA_Rules.getLastPoDate(),
-            AnnexureA_Rules.getLPP(), AnnexureA_Rules.getBudgetaryOffer(), AnnexureA_Rules.getEstimatedRate(), AnnexureA_Rules.getTotalValue()
+            AnnexureA_Rules.getSerialNumber(idx + 1), 
+            AnnexureA_Rules.getMaterialCode(materialCode), 
+            AnnexureA_Rules.getItemDescription(zmmRecords),
+            AnnexureA_Rules.getPopulation(), 
+            AnnexureA_Rules.getQtyInStock(zmmRecords), 
+            AnnexureA_Rules.getQtyRequested(),
+            AnnexureA_Rules.getUnitOfMeasure(), 
+            AnnexureA_Rules.getLastPoNo(), 
+            AnnexureA_Rules.getLastPoDate(),
+            AnnexureA_Rules.getLPP(), 
+            AnnexureA_Rules.getBudgetaryOffer(), 
+            AnnexureA_Rules.getEstimatedRate(), 
+            AnnexureA_Rules.getTotalValue()
         ];
     });
 
@@ -92,6 +101,6 @@ function generateAnnexureAWorkbook(masterList, zmmRawData) {
         ...SCHEMA_TEMPLATES.AnnexureA_TopRows,
         SCHEMA_TEMPLATES.AnnexureA_Headers,
         ...dataRows,
-        ['', '', '', '', '', '', '', '', '', '', '', 'TOTAL:', ''] // Footer Row for Annexure A
+        ['', '', '', '', '', '', '', '', '', '', '', 'TOTAL:', ''] // Footer Row for Annexure A Totals
     ];
 }
