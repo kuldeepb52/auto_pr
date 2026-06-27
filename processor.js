@@ -25,7 +25,7 @@ const SCHEMA_TEMPLATES = {
         ['', '2. This sheet is required to be filled for ZSPR type materials only.']
     ],
     
-    // NEW: Annexure A Structure based on CSV Upload
+    // Annexure A Structure
     AnnexureA_TopRows: [
         ['ANNEXURE-A : Estimation Sheet'],
         ['Project / ECM Description : xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'],
@@ -71,23 +71,31 @@ function generateAnnexureBWorkbook(masterList, zmmRawData, me2mRawData) {
     return [...SCHEMA_TEMPLATES.AnnexureB_TopRows, SCHEMA_TEMPLATES.AnnexureB_Headers_Row1, SCHEMA_TEMPLATES.AnnexureB_Headers_Row2, ...dataRows, ...SCHEMA_TEMPLATES.AnnexureB_FooterRows];
 }
 
-function generateAnnexureAWorkbook(masterList, zmmRawData) {
+function generateAnnexureAWorkbook(masterList, zmmRawData, me2mRawData) {
     const zmmRegistry = new Map();
     zmmRawData.forEach(r => {
         const m = String(r['Material'] || '').trim();
         if (m) { if (!zmmRegistry.has(m)) zmmRegistry.set(m, []); zmmRegistry.get(m).push(r); }
     });
 
+    const me2mRegistry = new Map();
+    me2mRawData.forEach(r => {
+        const m = String(r['Material'] || '').trim();
+        if (m) { if (!me2mRegistry.has(m)) me2mRegistry.set(m, []); me2mRegistry.get(m).push(r); }
+    });
+
     const dataRows = masterList.map((materialCode, idx) => {
         const zmmRecords = zmmRegistry.get(materialCode) || [];
+        const me2mRecords = me2mRegistry.get(materialCode) || [];
+        
         return [
             AnnexureA_Rules.getSerialNumber(idx + 1), 
             AnnexureA_Rules.getMaterialCode(materialCode), 
-            AnnexureA_Rules.getItemDescription(zmmRecords),
+            AnnexureA_Rules.getItemDescription(zmmRecords, me2mRecords),
             AnnexureA_Rules.getPopulation(), 
             AnnexureA_Rules.getQtyInStock(zmmRecords), 
             AnnexureA_Rules.getQtyRequested(),
-            AnnexureA_Rules.getUnitOfMeasure(), 
+            AnnexureA_Rules.getUnitOfMeasure(me2mRecords), 
             AnnexureA_Rules.getLastPoNo(), 
             AnnexureA_Rules.getLastPoDate(),
             AnnexureA_Rules.getLPP(), 
@@ -101,6 +109,6 @@ function generateAnnexureAWorkbook(masterList, zmmRawData) {
         ...SCHEMA_TEMPLATES.AnnexureA_TopRows,
         SCHEMA_TEMPLATES.AnnexureA_Headers,
         ...dataRows,
-        ['', '', '', '', '', '', '', '', '', '', '', 'TOTAL:', ''] // Footer Row for Annexure A Totals
+        ['', '', '', '', '', '', '', '', '', '', '', 'TOTAL:', ''] 
     ];
 }
