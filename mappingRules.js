@@ -142,22 +142,41 @@ const AnnexureB_Rules = {
 };
 
 // ---------------------------------------------------------
-// ANNEXURE A LOGIC VAULT (Ready for Mapping Rules)
+// ANNEXURE A LOGIC VAULT
 // ---------------------------------------------------------
 const AnnexureA_Rules = {
     getSerialNumber: (idx) => idx,
     getMaterialCode: (m) => m,
-    getItemDescription: (zmmRecords) => {
-        if (!zmmRecords || zmmRecords.length === 0) return '[DESCRIPTION NOT FOUND IN SAP]';
-        return String(getValueByFlexibleKey(zmmRecords[0], 'description')).trim();
+    
+    // Looks in ME2M for "Short Text", falls back to ZMM "Description"
+    getItemDescription: (zmmRecords, me2mRecords) => {
+        if (me2mRecords && me2mRecords.length > 0) {
+            const desc = String(getValueByFlexibleKey(me2mRecords[0], 'shorttext')).trim();
+            if (desc) return desc;
+        }
+        if (zmmRecords && zmmRecords.length > 0) {
+            const desc = String(getValueByFlexibleKey(zmmRecords[0], 'description')).trim();
+            if (desc) return desc;
+        }
+        return '[DESCRIPTION NOT FOUND]';
     },
+    
     getPopulation: () => '',
+    
+    // Pulls from ZMMMATHIST (Identical to Annexure B)
     getQtyInStock: (zmmRecords) => {
         if (!zmmRecords || zmmRecords.length === 0) return 0;
         return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'stock'));
     },
+    
     getQtyRequested: () => '',
-    getUnitOfMeasure: () => '',
+    
+    // Pulls strictly from ME2M "Order Unit"
+    getUnitOfMeasure: (me2mRecords) => {
+        if (!me2mRecords || me2mRecords.length === 0) return '';
+        return String(getValueByFlexibleKey(me2mRecords[0], 'orderunit')).trim();
+    },
+    
     getLastPoNo: () => '',
     getLastPoDate: () => '',
     getLPP: () => '',
