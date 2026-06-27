@@ -96,8 +96,8 @@ function generateAnnexureAWorkbook(masterList, zmmRawData, me2mRawData) {
             AnnexureA_Rules.getQtyInStock(zmmRecords), 
             AnnexureA_Rules.getQtyRequested(),
             AnnexureA_Rules.getUnitOfMeasure(me2mRecords), 
-            AnnexureA_Rules.getLastPoNo(), 
-            AnnexureA_Rules.getLastPoDate(),
+            AnnexureA_Rules.getLastPoNo(me2mRecords),       // Now wired to ME2M Sort Logic
+            AnnexureA_Rules.getLastPoDate(me2mRecords),     // Now wired to ME2M Sort Logic
             AnnexureA_Rules.getLPP(), 
             AnnexureA_Rules.getBudgetaryOffer(), 
             AnnexureA_Rules.getEstimatedRate(), 
