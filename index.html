@@ -13,7 +13,7 @@
         h2 { color: #0056b3; border-bottom: 2px solid #0056b3; padding-bottom: 8px; }
         .file-group { margin-bottom: 20px; display: flex; flex-direction: column; }
         label { font-weight: bold; margin-bottom: 5px; color: #444; }
-        input[type="file"] { padding: 10px; border: 1px dashed #ccc; background: #fafafa; border-radius: 4px; }
+        input[type="file"], select { padding: 10px; border: 1px solid #ccc; background: #fafafa; border-radius: 4px; }
         textarea { padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-family: monospace; resize: vertical; }
         button { background-color: #0056b3; color: white; padding: 12px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 10px; }
         button:hover { background-color: #004494; }
@@ -46,17 +46,24 @@
     </div>
 
     <div id="step-2" class="step-panel">
-        <h3>Step 2: Verify Master PR List</h3>
+        <h3>Step 2: Generate Document</h3>
         <div id="scanResult" style="color: green; font-weight: bold; margin-bottom: 10px;"></div>
         <div id="materialTags" style="margin-bottom: 20px; max-height: 150px; overflow-y: auto;"></div>
 
         <div class="file-group">
-            <label for="anchorList">Are any materials missing from the list above?</label>
-            <small style="color: #666; margin-bottom: 5px;">Copy your entire column of Material Codes from your original PR and paste it here. We will merge and deduplicate it automatically.</small>
+            <label for="docType">Select Annexure Type:</label>
+            <select id="docType">
+                <option value="AnnexureB">Annexure B (Procurement Justification)</option>
+                <option value="AnnexureA">Annexure A (Estimation Sheet)</option>
+            </select>
+        </div>
+
+        <div class="file-group">
+            <label for="anchorList">Paste Target Material Codes:</label>
             <textarea id="anchorList" rows="6" placeholder="Paste material codes here...&#10;M123456789&#10;M987654321"></textarea>
         </div>
 
-        <button id="generateBtn" class="btn-success">Generate Annexure B</button>
+        <button id="generateBtn" class="btn-success">Generate Document</button>
         <div id="genStatus" id="status"></div>
     </div>
 </div>
@@ -64,12 +71,10 @@
 <script src="mappingRules.js"></script>
 <script src="processor.js"></script>
 <script>
-    // Global State Variables
     let parsedZmmData = [];
     let parsedMe2mData = [];
     let sapUniqueMaterials = new Set();
 
-    // Utility: Parse Excel to JSON
     function parseExcelToJson(file) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -85,7 +90,6 @@
         });
     }
 
-    // STATE 1: Scan Button Clicked
     document.getElementById('scanBtn').addEventListener('click', async () => {
         const zmmFile = document.getElementById('zmmFile').files[0];
         const me2mFile = document.getElementById('me2mFile').files[0];
@@ -103,14 +107,12 @@
             parsedZmmData = await parseExcelToJson(zmmFile);
             parsedMe2mData = me2mFile ? await parseExcelToJson(me2mFile) : [];
 
-            // Extract unique materials from SAP files
             sapUniqueMaterials.clear();
             [...parsedZmmData, ...parsedMe2mData].forEach(row => {
                 const mat = String(row['Material'] || '').trim();
                 if (mat) sapUniqueMaterials.add(mat);
             });
 
-            // Populate UI for Step 2
             const tagsContainer = document.getElementById('materialTags');
             tagsContainer.innerHTML = Array.from(sapUniqueMaterials)
                 .sort()
@@ -119,7 +121,6 @@
             
             document.getElementById('scanResult').innerText = `✅ Found ${sapUniqueMaterials.size} unique materials in SAP.`;
 
-            // Transition UI
             document.getElementById('step-1').classList.remove('active-step');
             document.getElementById('step-2').classList.add('active-step');
 
@@ -130,90 +131,99 @@
         }
     });
 
-    // STATE 2: Generate Button Clicked
     document.getElementById('generateBtn').addEventListener('click', async () => {
         const statusDiv = document.getElementById('genStatus');
-        statusDiv.innerText = "Reconciling master list...";
+        const docType = document.getElementById('docType').value;
+        statusDiv.innerText = `Preparing ${docType}...`;
 
-        // 1. Get Pasted Data
         const rawText = document.getElementById('anchorList').value;
         const pastedMaterials = rawText.split(/[\s,]+/).map(s => s.trim()).filter(Boolean);
-
-        // 2. Merge & Deduplicate (SAP + Pasted)
-        const masterSet = new Set([...sapUniqueMaterials, ...pastedMaterials]);
-        const finalMasterList = Array.from(masterSet).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+        const finalMasterList = Array.from(new Set([...sapUniqueMaterials, ...pastedMaterials])).sort();
 
         if (finalMasterList.length === 0) {
-            statusDiv.innerHTML = "<span style='color:red;'>Error: No material codes found to process.</span>";
+            statusDiv.innerHTML = "<span style='color:red;'>Error: No material codes found.</span>";
             return;
         }
 
         try {
-            statusDiv.innerText = "Processing logic engine...";
-            const finalDataArray = generateAnnexureBWorkbook(finalMasterList, parsedZmmData, parsedMe2mData);
-
-            statusDiv.innerText = "Applying schema formatting...";
-            await exportFormattedExcel(finalDataArray);
-
-            statusDiv.innerHTML = `<span style='color:green;'>Success! Annexure B generated for ${finalMasterList.length} items.</span>`;
+            let finalDataArray;
+            if (docType === 'AnnexureB') {
+                finalDataArray = generateAnnexureBWorkbook(finalMasterList, parsedZmmData, parsedMe2mData);
+                await exportFormattedExcel(finalDataArray, docType);
+            } else {
+                finalDataArray = generateAnnexureAWorkbook(finalMasterList, parsedZmmData);
+                await exportFormattedExcel(finalDataArray, docType);
+            }
+            statusDiv.innerHTML = `<span style='color:green;'>Success! ${docType} generated for ${finalMasterList.length} items.</span>`;
         } catch (error) {
             console.error(error);
             statusDiv.innerHTML = `<span style='color:red;'>Error generating file: ${error.message}</span>`;
         }
     });
 
-    // Excel Formatting Engine
-    async function exportFormattedExcel(dataArray) {
+    async function exportFormattedExcel(dataArray, docType) {
         const workbook = new ExcelJS.Workbook();
-        const sheet = workbook.addWorksheet("Annexure B");
-
+        const sheet = workbook.addWorksheet(docType);
         sheet.addRows(dataArray);
 
-        const totalRows = sheet.rowCount;
-        const footerStartRow = totalRows - 2;
+        if (docType === 'AnnexureB') {
+            const totalRows = sheet.rowCount;
+            const footerStartRow = totalRows - 2;
 
-        sheet.mergeCells('A1:W1'); 
-        sheet.mergeCells('A2:W2'); 
-        sheet.mergeCells('A3:E3'); 
-        sheet.mergeCells('F3:W3'); 
+            sheet.mergeCells('A1:W1'); sheet.mergeCells('A2:W2'); 
+            sheet.mergeCells('A3:E3'); sheet.mergeCells('F3:W3'); 
+            ['A','B','C','D','E','F','G','H','I','J','P','U','V','W'].forEach(col => sheet.mergeCells(`${col}5:${col}6`));
+            sheet.mergeCells('K5:O5'); sheet.mergeCells('Q5:R5'); sheet.mergeCells('S5:T5'); 
+            sheet.mergeCells(`A${footerStartRow}:W${footerStartRow}`);         
+            sheet.mergeCells(`B${footerStartRow + 1}:W${footerStartRow + 1}`); 
+            sheet.mergeCells(`B${footerStartRow + 2}:W${footerStartRow + 2}`); 
 
-        const verticalCols = ['A','B','C','D','E','F','G','H','I','J','P','U','V','W'];
-        verticalCols.forEach(col => sheet.mergeCells(`${col}5:${col}6`));
+            sheet.eachRow((row, rowNumber) => {
+                row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                    if (rowNumber < footerStartRow) {
+                        cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+                        cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+                        if (rowNumber <= 6) {
+                            cell.font = { bold: true };
+                            cell.fill = { type: 'pattern', pattern:'solid', fgColor:{argb:'FFF2F2F2'} };
+                        }
+                    } else {
+                        cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+                    }
+                });
+            });
+            sheet.columns.forEach(col => { col.width = 12; });
+            sheet.getColumn('D').width = 35; sheet.getColumn('W').width = 35; 
 
-        sheet.mergeCells('K5:O5'); 
-        sheet.mergeCells('Q5:R5'); 
-        sheet.mergeCells('S5:T5'); 
-
-        sheet.mergeCells(`A${footerStartRow}:W${footerStartRow}`);         
-        sheet.mergeCells(`B${footerStartRow + 1}:W${footerStartRow + 1}`); 
-        sheet.mergeCells(`B${footerStartRow + 2}:W${footerStartRow + 2}`); 
-
-        sheet.eachRow((row, rowNumber) => {
-            row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-                if (rowNumber < footerStartRow) {
-                    cell.border = {
-                        top: {style:'thin'}, left: {style:'thin'}, 
-                        bottom: {style:'thin'}, right: {style:'thin'}
-                    };
+        } else if (docType === 'AnnexureA') {
+            sheet.mergeCells('A1:M1');
+            sheet.mergeCells('A2:M2');
+            sheet.mergeCells('A3:M3');
+            sheet.mergeCells('A4:M4');
+            sheet.mergeCells('A5:M5');
+            
+            const totalRows = sheet.rowCount;
+            sheet.mergeCells(`A${totalRows}:K${totalRows}`); // Merge footer for "TOTAL:" label
+            
+            sheet.eachRow((row, rowNumber) => {
+                row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                    cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
                     cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-
-                    if (rowNumber <= 6) {
+                    
+                    if (rowNumber <= 6 || rowNumber === totalRows) {
                         cell.font = { bold: true };
                         cell.fill = { type: 'pattern', pattern:'solid', fgColor:{argb:'FFF2F2F2'} };
                     }
-                } else {
-                    cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
-                    if (rowNumber === footerStartRow + 1 && colNumber === 1) cell.font = { bold: true };
-                }
+                });
             });
-        });
-
-        sheet.columns.forEach(col => { col.width = 12; });
-        sheet.getColumn('D').width = 35; 
-        sheet.getColumn('W').width = 35; 
+            
+            sheet.columns.forEach(col => { col.width = 15; });
+            sheet.getColumn('C').width = 40; // Material Description wider
+            sheet.getCell(`A${totalRows}`).alignment = { vertical: 'middle', horizontal: 'right', wrapText: true };
+        }
 
         const buffer = await workbook.xlsx.writeBuffer();
-        saveAs(new Blob([buffer]), "Annexure_B_Automated.xlsx");
+        saveAs(new Blob([buffer]), `${docType}_Automated.xlsx`);
     }
 </script>
 </body>
