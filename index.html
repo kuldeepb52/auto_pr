@@ -218,7 +218,7 @@
             });
             
             sheet.columns.forEach(col => { col.width = 15; });
-            sheet.getColumn('C').width = 40; // Material Description wider
+            sheet.getColumn('C').width = 40; // Expand Material Description 
             sheet.getCell(`A${totalRows}`).alignment = { vertical: 'middle', horizontal: 'right', wrapText: true };
         }
 
