@@ -48,4 +48,476 @@
     <div id="step-2" class="step-panel">
         <h3>Step 2: Generate Document</h3>
         <div id="scanResult" style="color: green; font-weight: bold; margin-bottom: 10px;"></div>
-        <div id="materialTags" style="margin
+        <div id="materialTags" style="margin-bottom: 20px; max-height: 150px; overflow-y: auto;"></div>
+
+        <div class="file-group">
+            <label for="docType">Select Annexure Type:</label>
+            <select id="docType">
+                <option value="AnnexureB">Annexure B (Procurement Justification)</option>
+                <option value="AnnexureA">Annexure A (Estimation Sheet)</option>
+            </select>
+        </div>
+
+        <div class="file-group">
+            <label for="anchorList">Paste Target Material Codes:</label>
+            <textarea id="anchorList" rows="6" placeholder="Paste material codes here...&#10;M123456789&#10;M987654321"></textarea>
+        </div>
+
+        <button id="generateBtn" class="btn-success">Generate Document</button>
+        <div id="genStatus" id="status"></div>
+    </div>
+</div>
+
+<script>
+// ==========================================
+// 1. MAPPING RULES ENGINE
+// ==========================================
+function getValueByFlexibleKey(row, substringMatch) {
+    if (!row) return '';
+    const target = substringMatch.toLowerCase().replace(/\s+/g, '');
+    for (let key in row) {
+        if (key.toLowerCase().replace(/\s+/g, '').includes(target)) {
+            return row[key];
+        }
+    }
+    return '';
+}
+
+function parseSapNumeric(value) {
+    if (value === undefined || value === null) return 0;
+    const cleanStr = String(value).replace(/,/g, '').trim();
+    return parseFloat(cleanStr) || 0;
+}
+
+function formatSapDate(val) {
+    if (val === undefined || val === null || val === '') return '';
+    let strVal = String(val).trim();
+    
+    if (/^\d{5}(\.\d+)?$/.test(strVal)) {
+        const numVal = parseFloat(strVal);
+        if (numVal > 40000 && numVal < 60000) { 
+            const dateObj = new Date(Math.round((numVal - 25569) * 86400 * 1000));
+            const d = String(dateObj.getUTCDate()).padStart(2, '0');
+            const m = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
+            const y = dateObj.getUTCFullYear();
+            return `${d}.${m}.${y}`;
+        }
+    }
+    if (/^\d{8}$/.test(strVal)) {
+        const y = strVal.substring(0, 4);
+        const m = strVal.substring(4, 6);
+        const d = strVal.substring(6, 8);
+        return `${d}.${m}.${y}`;
+    }
+    if (/^\d{2}[\.\/\-]\d{2}[\.\/\-]\d{4}$/.test(strVal)) {
+        return strVal.replace(/[\/\-]/g, '.'); 
+    }
+    const parsedDate = new Date(strVal);
+    if (!isNaN(parsedDate.getTime())) {
+        const d = String(parsedDate.getDate()).padStart(2, '0');
+        const m = String(parsedDate.getMonth() + 1).padStart(2, '0');
+        const y = parsedDate.getFullYear();
+        return `${d}.${m}.${y}`;
+    }
+    return strVal;
+}
+
+function parseDateForSort(dateStr) {
+    if (!dateStr) return 0;
+    const formatted = formatSapDate(dateStr);
+    if (/^\d{2}\.\d{2}\.\d{4}$/.test(formatted)) {
+        const parts = formatted.split('.');
+        return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`).getTime();
+    }
+    const fallback = new Date(formatted).getTime();
+    return isNaN(fallback) ? 0 : fallback;
+}
+
+const AnnexureB_Rules = {
+    getSerialNumber: (serialNumber) => serialNumber,
+    getMaterialCode: (materialCode) => materialCode,
+    getOldMaterialCode: () => '',
+    getItemDescription: (zmmRecords, me2mRecords) => {
+        if (!zmmRecords || zmmRecords.length === 0) return '[DESCRIPTION NOT FOUND]';
+        return String(getValueByFlexibleKey(zmmRecords[0], 'description')).trim();
+    },
+    getPopulation: () => '',
+    getQtyProposed: () => '',
+    getQtyInStock: (zmmRecords) => {
+        if (!zmmRecords || zmmRecords.length === 0) return 0;
+        return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'stock'));
+    },
+    getSafetyStock: () => '',
+    getMandatorySpareQty: () => '',
+    getNormalLife: () => '',
+    getConsumptionYr4: (zmmRecords) => {
+        if (!zmmRecords || zmmRecords.length === 0) return 0;
+        return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'yr-4'));
+    },
+    getConsumptionYr3: (zmmRecords) => {
+        if (!zmmRecords || zmmRecords.length === 0) return 0;
+        return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'yr-3'));
+    },
+    getConsumptionYr2: (zmmRecords) => {
+        if (!zmmRecords || zmmRecords.length === 0) return 0;
+        return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'yr-2'));
+    },
+    getConsumptionPrevYr: (zmmRecords) => {
+        if (!zmmRecords || zmmRecords.length === 0) return 0;
+        return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'prevfn'));
+    },
+    getConsumptionCurrYr: (zmmRecords) => {
+        if (!zmmRecords || zmmRecords.length === 0) return 0;
+        return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'currfin.year')) || parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'currfinyear'));
+    },
+    getFailureRate: () => '',
+    getPipelinePoNoDate: (zmmRecords) => {
+        if (!zmmRecords || zmmRecords.length === 0) return 'NA';
+        const poRows = zmmRecords.filter(r => String(getValueByFlexibleKey(r, 'doc.type')).trim().toLowerCase() === 'poitem');
+        if (poRows.length === 0) return 'NA';
+        const formattedPOs = poRows.map(row => {
+            const docDetail = String(getValueByFlexibleKey(row, 'doc.detail')).trim();
+            const poNumber = docDetail.split('/')[0].trim();
+            const reqDate = formatSapDate(getValueByFlexibleKey(row, 'req.date'));
+            return (poNumber && reqDate) ? `${poNumber} / ${reqDate}` : poNumber;
+        }).filter(Boolean);
+        return formattedPOs.length > 0 ? formattedPOs.join('\n') : 'NA';
+    },
+    getPipelinePoQty: (zmmRecords) => {
+        if (!zmmRecords || zmmRecords.length === 0) return 0;
+        const poRows = zmmRecords.filter(r => String(getValueByFlexibleKey(r, 'doc.type')).trim().toLowerCase() === 'poitem');
+        return poRows.reduce((sum, row) => sum + parseSapNumeric(getValueByFlexibleKey(row, 'quantity')), 0);
+    },
+    getPipelinePrNoDate: (zmmRecords) => {
+        if (!zmmRecords || zmmRecords.length === 0) return 'NA';
+        const prRows = zmmRecords.filter(r => String(getValueByFlexibleKey(r, 'doc.type')).trim().toLowerCase() === 'purrqs');
+        if (prRows.length === 0) return 'NA';
+        const formattedPRs = prRows.map(row => {
+            const docDetail = String(getValueByFlexibleKey(row, 'doc.detail')).trim();
+            const prNumber = docDetail.split('/')[0].trim();
+            const reqDate = formatSapDate(getValueByFlexibleKey(row, 'req.date'));
+            return (prNumber && reqDate) ? `${prNumber} / ${reqDate}` : prNumber;
+        }).filter(Boolean);
+        return formattedPRs.length > 0 ? formattedPRs.join('\n') : 'NA';
+    },
+    getPipelinePrQty: (zmmRecords) => {
+        if (!zmmRecords || zmmRecords.length === 0) return 0;
+        const prRows = zmmRecords.filter(r => String(getValueByFlexibleKey(r, 'doc.type')).trim().toLowerCase() === 'purrqs');
+        return prRows.reduce((sum, row) => sum + parseSapNumeric(getValueByFlexibleKey(row, 'quantity')), 0);
+    },
+    getLastPoNoDate: () => '',
+    getLastPoItemSlNo: () => '',
+    getJustification: () => 'INDENTOR TO FILL' 
+};
+
+const AnnexureA_Rules = {
+    _getLatestMe2mRecord: (me2mRecords) => {
+        if (!me2mRecords || me2mRecords.length === 0) return null;
+        let latestRow = null;
+        let maxTimestamp = -1;
+        me2mRecords.forEach(row => {
+            const rawDate = getValueByFlexibleKey(row, 'documentdate');
+            const timestamp = parseDateForSort(rawDate);
+            if (timestamp > maxTimestamp) {
+                maxTimestamp = timestamp;
+                latestRow = row;
+            }
+        });
+        return latestRow;
+    },
+    getSerialNumber: (idx) => idx,
+    getMaterialCode: (m) => m,
+    getItemDescription: (zmmRecords, me2mRecords) => {
+        if (me2mRecords && me2mRecords.length > 0) {
+            const desc = String(getValueByFlexibleKey(me2mRecords[0], 'shorttext')).trim();
+            if (desc) return desc;
+        }
+        if (zmmRecords && zmmRecords.length > 0) {
+            const desc = String(getValueByFlexibleKey(zmmRecords[0], 'description')).trim();
+            if (desc) return desc;
+        }
+        return '[DESCRIPTION NOT FOUND]';
+    },
+    getPopulation: () => '',
+    getQtyInStock: (zmmRecords) => {
+        if (!zmmRecords || zmmRecords.length === 0) return 0;
+        return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'stock'));
+    },
+    getQtyRequested: () => '',
+    getUnitOfMeasure: (me2mRecords) => {
+        if (!me2mRecords || me2mRecords.length === 0) return '';
+        return String(getValueByFlexibleKey(me2mRecords[0], 'orderunit')).trim();
+    },
+    getLastPoNo: (me2mRecords) => {
+        const latestRow = AnnexureA_Rules._getLatestMe2mRecord(me2mRecords);
+        if (!latestRow) return 'NA';
+        return String(getValueByFlexibleKey(latestRow, 'purchasingdocument')).trim() || 'NA';
+    },
+    getLastPoDate: (me2mRecords) => {
+        const latestRow = AnnexureA_Rules._getLatestMe2mRecord(me2mRecords);
+        if (!latestRow) return 'NA';
+        return formatSapDate(getValueByFlexibleKey(latestRow, 'documentdate')) || 'NA';
+    },
+    getLPP: () => '',
+    getBudgetaryOffer: () => '',
+    getEstimatedRate: () => '',
+    getTotalValue: () => ''
+};
+
+
+// ==========================================
+// 2. PROCESSOR SCHEMAS
+// ==========================================
+const SCHEMA_TEMPLATES = {
+    AnnexureB_TopRows: [
+        ['Material Procurement Justification sheet'],
+        ['Procurement of xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'],
+        ['PRNo.xxxxxx / Date:xxxxxx', '', '', 'Value of  indent in (Rs.): xxxxx/-'],
+        ['1','2','3','4','5','6','7','8','9','10','11','','','','','12','13','','14','','15','16','17']
+    ],
+    AnnexureB_Headers_Row1: [
+        'Sl . No.', 'Material Code', 'Old Material code if any', 'Item Description', 
+        'Population of Item ', 'Quantity Proposed Indent ', 'Quantity in Stock as on date', 
+        'Saftey Stock*\n(Minimum Qty. to be maintained at site )', 'Quantity under Mandatory Spare List as on date', 
+        'Normal Life of item (Year)', 'Actual Consumption in last 5 Years ', '', '', '', '', 
+        'Failure rate (frequent /normal)', 'Pipeline PO ', '', 'Pipeline PR', '', 
+        'Last PO No. & Date', 'Last Po. Item Sl. No.', 'Justification of Qty'
+    ],
+    AnnexureB_Headers_Row2: [
+        '', '', '', '', '', '', '', '', '', '', 
+        'Curr. Fin Yr-4', 'Curr. Fin Yr-3', 'Curr. Fin Yr-2', 'Previous Fin Yr', 'Curr. Fin Year', 
+        '', 'PO No. /Date ', 'Qty ', 'PRNo. /Date ', 'Qty ', '', '', ''
+    ],
+    AnnexureB_FooterRows: [
+        ['* This data is to be given where the item is a critical spare as approved by ED (OS) / Minimum Qty. to be maintained at site for area of critical application'],
+        ['Note', '1. Please take care that sequence of items as in the PR is also maintained in this sheet'],
+        ['', '2. This sheet is required to be filled for ZSPR type materials only.']
+    ],
+    AnnexureA_TopRows: [
+        ['ANNEXURE-A : Estimation Sheet'],
+        ['Project / ECM Description : xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'],
+        ['PR No. : xxxxxx / Date: xxxxxx'],
+        ['Estimated Value : Rs. xxxxxx'],
+        ['PR ECM No. : xxxxxxxxxxxxxxxxxxxxxxx']
+    ],
+    AnnexureA_Headers: [
+        'S No.', 'Material', 'Material Description', 'Population', 
+        'Stock Qty', 'Qty requested', 'Unit of Measure', 'Last PO No.', 
+        'Last PO date', 'LPP', 'Budgetary offer', 'Estimated Rate', 'Total Value'
+    ]
+};
+
+function generateAnnexureBWorkbook(masterList, zmmRawData, me2mRawData) {
+    const zmmRegistry = new Map();
+    zmmRawData.forEach(r => {
+        const m = String(r['Material'] || '').trim();
+        if (m) { if (!zmmRegistry.has(m)) zmmRegistry.set(m, []); zmmRegistry.get(m).push(r); }
+    });
+    const me2mRegistry = new Map();
+    me2mRawData.forEach(r => {
+        const m = String(r['Material'] || '').trim();
+        if (m) { if (!me2mRegistry.has(m)) me2mRegistry.set(m, []); me2mRegistry.get(m).push(r); }
+    });
+
+    const dataRows = masterList.map((materialCode, idx) => {
+        const zmmRecords = zmmRegistry.get(materialCode) || [];
+        const me2mRecords = me2mRegistry.get(materialCode) || [];
+        return [
+            AnnexureB_Rules.getSerialNumber(idx + 1), AnnexureB_Rules.getMaterialCode(materialCode), AnnexureB_Rules.getOldMaterialCode(),
+            AnnexureB_Rules.getItemDescription(zmmRecords, me2mRecords), AnnexureB_Rules.getPopulation(), AnnexureB_Rules.getQtyProposed(),
+            AnnexureB_Rules.getQtyInStock(zmmRecords), AnnexureB_Rules.getSafetyStock(), AnnexureB_Rules.getMandatorySpareQty(),
+            AnnexureB_Rules.getNormalLife(), AnnexureB_Rules.getConsumptionYr4(zmmRecords), AnnexureB_Rules.getConsumptionYr3(zmmRecords),
+            AnnexureB_Rules.getConsumptionYr2(zmmRecords), AnnexureB_Rules.getConsumptionPrevYr(zmmRecords), AnnexureB_Rules.getConsumptionCurrYr(zmmRecords),
+            AnnexureB_Rules.getFailureRate(), AnnexureB_Rules.getPipelinePoNoDate(zmmRecords), AnnexureB_Rules.getPipelinePoQty(zmmRecords),
+            AnnexureB_Rules.getPipelinePrNoDate(zmmRecords), AnnexureB_Rules.getPipelinePrQty(zmmRecords), AnnexureB_Rules.getLastPoNoDate(),
+            AnnexureB_Rules.getLastPoItemSlNo(), AnnexureB_Rules.getJustification(zmmRecords, me2mRecords)
+        ];
+    });
+    return [...SCHEMA_TEMPLATES.AnnexureB_TopRows, SCHEMA_TEMPLATES.AnnexureB_Headers_Row1, SCHEMA_TEMPLATES.AnnexureB_Headers_Row2, ...dataRows, ...SCHEMA_TEMPLATES.AnnexureB_FooterRows];
+}
+
+function generateAnnexureAWorkbook(masterList, zmmRawData, me2mRawData) {
+    const zmmRegistry = new Map();
+    zmmRawData.forEach(r => {
+        const m = String(r['Material'] || '').trim();
+        if (m) { if (!zmmRegistry.has(m)) zmmRegistry.set(m, []); zmmRegistry.get(m).push(r); }
+    });
+    const me2mRegistry = new Map();
+    me2mRawData.forEach(r => {
+        const m = String(r['Material'] || '').trim();
+        if (m) { if (!me2mRegistry.has(m)) me2mRegistry.set(m, []); me2mRegistry.get(m).push(r); }
+    });
+
+    const dataRows = masterList.map((materialCode, idx) => {
+        const zmmRecords = zmmRegistry.get(materialCode) || [];
+        const me2mRecords = me2mRegistry.get(materialCode) || [];
+        return [
+            AnnexureA_Rules.getSerialNumber(idx + 1), AnnexureA_Rules.getMaterialCode(materialCode), AnnexureA_Rules.getItemDescription(zmmRecords, me2mRecords),
+            AnnexureA_Rules.getPopulation(), AnnexureA_Rules.getQtyInStock(zmmRecords), AnnexureA_Rules.getQtyRequested(),
+            AnnexureA_Rules.getUnitOfMeasure(me2mRecords), AnnexureA_Rules.getLastPoNo(me2mRecords), AnnexureA_Rules.getLastPoDate(me2mRecords),
+            AnnexureA_Rules.getLPP(), AnnexureA_Rules.getBudgetaryOffer(), AnnexureA_Rules.getEstimatedRate(), AnnexureA_Rules.getTotalValue()
+        ];
+    });
+    return [...SCHEMA_TEMPLATES.AnnexureA_TopRows, SCHEMA_TEMPLATES.AnnexureA_Headers, ...dataRows, ['', '', '', '', '', '', '', '', '', '', '', 'TOTAL:', '']];
+}
+
+// ==========================================
+// 3. UI AND EVENT LOGIC
+// ==========================================
+let parsedZmmData = [];
+let parsedMe2mData = [];
+let sapUniqueMaterials = new Set();
+
+function parseExcelToJson(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+                resolve(json);
+            } catch (err) {
+                reject(err);
+            }
+        };
+        reader.onerror = (err) => reject(err);
+        reader.readAsArrayBuffer(file);
+    });
+}
+
+document.getElementById('scanBtn').addEventListener('click', async () => {
+    const zmmFile = document.getElementById('zmmFile').files[0];
+    const me2mFile = document.getElementById('me2mFile').files[0];
+    const statusDiv = document.getElementById('scanStatus');
+
+    if (!zmmFile) {
+        statusDiv.innerHTML = "<span style='color:red;'>Error: ZMMMATHIST file is mandatory.</span>";
+        return;
+    }
+
+    statusDiv.innerText = "Scanning files (This may take a moment)...";
+    document.getElementById('scanBtn').disabled = true;
+
+    try {
+        parsedZmmData = await parseExcelToJson(zmmFile);
+        parsedMe2mData = me2mFile ? await parseExcelToJson(me2mFile) : [];
+
+        sapUniqueMaterials.clear();
+        [...parsedZmmData, ...parsedMe2mData].forEach(row => {
+            const mat = String(row['Material'] || '').trim();
+            if (mat) sapUniqueMaterials.add(mat);
+        });
+
+        const tagsContainer = document.getElementById('materialTags');
+        tagsContainer.innerHTML = Array.from(sapUniqueMaterials).sort().map(m => `<span class="material-badge">${m}</span>`).join('');
+        
+        document.getElementById('scanResult').innerText = `✅ Found ${sapUniqueMaterials.size} unique materials in SAP.`;
+        document.getElementById('step-1').classList.remove('active-step');
+        document.getElementById('step-2').classList.add('active-step');
+
+    } catch (error) {
+        console.error(error);
+        statusDiv.innerHTML = `<span style='color:red;'>Scan failed. Check if file is valid Excel/CSV.</span>`;
+        document.getElementById('scanBtn').disabled = false;
+    }
+});
+
+document.getElementById('generateBtn').addEventListener('click', async () => {
+    const statusDiv = document.getElementById('genStatus');
+    const docType = document.getElementById('docType').value;
+    statusDiv.innerText = `Preparing ${docType}...`;
+
+    const rawText = document.getElementById('anchorList').value;
+    const pastedMaterials = rawText.split(/[\s,]+/).map(s => s.trim()).filter(Boolean);
+    const finalMasterList = Array.from(new Set([...sapUniqueMaterials, ...pastedMaterials])).sort();
+
+    if (finalMasterList.length === 0) {
+        statusDiv.innerHTML = "<span style='color:red;'>Error: No material codes found.</span>";
+        return;
+    }
+
+    try {
+        let finalDataArray;
+        if (docType === 'AnnexureB') {
+            finalDataArray = generateAnnexureBWorkbook(finalMasterList, parsedZmmData, parsedMe2mData);
+            await exportFormattedExcel(finalDataArray, docType);
+        } else {
+            finalDataArray = generateAnnexureAWorkbook(finalMasterList, parsedZmmData, parsedMe2mData);
+            await exportFormattedExcel(finalDataArray, docType);
+        }
+        statusDiv.innerHTML = `<span style='color:green;'>Success! ${docType} generated for ${finalMasterList.length} items.</span>`;
+    } catch (error) {
+        console.error(error);
+        statusDiv.innerHTML = `<span style='color:red;'>Error generating file: ${error.message}</span>`;
+    }
+});
+
+async function exportFormattedExcel(dataArray, docType) {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet(docType);
+    sheet.addRows(dataArray);
+
+    if (docType === 'AnnexureB') {
+        const totalRows = sheet.rowCount;
+        const footerStartRow = totalRows - 2;
+
+        sheet.mergeCells('A1:W1'); sheet.mergeCells('A2:W2'); 
+        sheet.mergeCells('A3:E3'); sheet.mergeCells('F3:W3'); 
+        ['A','B','C','D','E','F','G','H','I','J','P','U','V','W'].forEach(col => sheet.mergeCells(`${col}5:${col}6`));
+        sheet.mergeCells('K5:O5'); sheet.mergeCells('Q5:R5'); sheet.mergeCells('S5:T5'); 
+        sheet.mergeCells(`A${footerStartRow}:W${footerStartRow}`);         
+        sheet.mergeCells(`B${footerStartRow + 1}:W${footerStartRow + 1}`); 
+        sheet.mergeCells(`B${footerStartRow + 2}:W${footerStartRow + 2}`); 
+
+        sheet.eachRow((row, rowNumber) => {
+            row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                if (rowNumber < footerStartRow) {
+                    cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+                    cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+                    if (rowNumber <= 6) {
+                        cell.font = { bold: true };
+                        cell.fill = { type: 'pattern', pattern:'solid', fgColor:{argb:'FFF2F2F2'} };
+                    }
+                } else {
+                    cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+                }
+            });
+        });
+        sheet.columns.forEach(col => { col.width = 12; });
+        sheet.getColumn('D').width = 35; sheet.getColumn('W').width = 35; 
+
+    } else if (docType === 'AnnexureA') {
+        sheet.mergeCells('A1:M1');
+        sheet.mergeCells('A2:M2');
+        sheet.mergeCells('A3:M3');
+        sheet.mergeCells('A4:M4');
+        sheet.mergeCells('A5:M5');
+        
+        const totalRows = sheet.rowCount;
+        sheet.mergeCells(`A${totalRows}:K${totalRows}`); 
+        
+        sheet.eachRow((row, rowNumber) => {
+            row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+                cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+                
+                if (rowNumber <= 6 || rowNumber === totalRows) {
+                    cell.font = { bold: true };
+                    cell.fill = { type: 'pattern', pattern:'solid', fgColor:{argb:'FFF2F2F2'} };
+                }
+            });
+        });
+        
+        sheet.columns.forEach(col => { col.width = 15; });
+        sheet.getColumn('C').width = 40; 
+        sheet.getCell(`A${totalRows}`).alignment = { vertical: 'middle', horizontal: 'right', wrapText: true };
+    }
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), `${docType}_Automated.xlsx`);
+}
+</script>
+</body>
+</html>
