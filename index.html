@@ -70,8 +70,13 @@
 
 <script>
 // ==========================================
-// 1. MAPPING RULES ENGINE
+// 1. HELPER / UTILITY FUNCTIONS
 // ==========================================
+
+/**
+ * Flexible key lookup: finds a value in a row object whose key
+ * contains the given substring (case-insensitive, whitespace-ignored).
+ */
 function getValueByFlexibleKey(row, substringMatch) {
     if (!row) return '';
     const target = substringMatch.toLowerCase().replace(/\s+/g, '');
@@ -83,20 +88,28 @@ function getValueByFlexibleKey(row, substringMatch) {
     return '';
 }
 
+/**
+ * Parses SAP numeric strings that may contain commas (e.g. "1,234.56").
+ */
 function parseSapNumeric(value) {
     if (value === undefined || value === null) return 0;
     const cleanStr = String(value).replace(/,/g, '').trim();
     return parseFloat(cleanStr) || 0;
 }
 
+/**
+ * Converts various SAP date formats to DD.MM.YYYY string.
+ * Handles: Excel serial numbers, YYYYMMDD strings, ISO strings,
+ * and already-formatted DD.MM.YYYY / DD/MM/YYYY / DD-MM-YYYY.
+ */
 function formatSapDate(val) {
     if (val === undefined || val === null || val === '') return '';
     let strVal = String(val).trim();
-    
-    // Fixed: Lowered threshold from 40000 to 30000 to handle older serial numbers
+
+    // Excel serial number (e.g. 44927 = 01.01.2023)
     if (/^\d{5}(\.\d+)?$/.test(strVal)) {
         const numVal = parseFloat(strVal);
-        if (numVal > 30000 && numVal < 70000) { 
+        if (numVal > 30000 && numVal < 70000) {
             const dateObj = new Date(Math.round((numVal - 25569) * 86400 * 1000));
             const d = String(dateObj.getUTCDate()).padStart(2, '0');
             const m = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
@@ -104,15 +117,21 @@ function formatSapDate(val) {
             return `${d}.${m}.${y}`;
         }
     }
+
+    // YYYYMMDD compact format
     if (/^\d{8}$/.test(strVal)) {
         const y = strVal.substring(0, 4);
         const m = strVal.substring(4, 6);
         const d = strVal.substring(6, 8);
         return `${d}.${m}.${y}`;
     }
+
+    // Already DD.MM.YYYY or DD/MM/YYYY or DD-MM-YYYY
     if (/^\d{2}[\.\/\-]\d{2}[\.\/\-]\d{4}$/.test(strVal)) {
-        return strVal.replace(/[\/\-]/g, '.'); 
+        return strVal.replace(/[\/\-]/g, '.');
     }
+
+    // Fallback: try JS Date parsing (handles ISO strings, etc.)
     const parsedDate = new Date(strVal);
     if (!isNaN(parsedDate.getTime())) {
         const d = String(parsedDate.getDate()).padStart(2, '0');
@@ -120,12 +139,18 @@ function formatSapDate(val) {
         const y = parsedDate.getFullYear();
         return `${d}.${m}.${y}`;
     }
-    return strVal;
+
+    return strVal; // return as-is if nothing works
 }
 
+/**
+ * Converts a formatted or raw date value to a Unix timestamp (ms)
+ * for chronological sorting. Returns 0 if unparseable.
+ */
 function parseDateForSort(dateStr) {
     if (!dateStr) return 0;
     const formatted = formatSapDate(dateStr);
+    // DD.MM.YYYY → sortable
     if (/^\d{2}\.\d{2}\.\d{4}$/.test(formatted)) {
         const parts = formatted.split('.');
         return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`).getTime();
@@ -134,22 +159,215 @@ function parseDateForSort(dateStr) {
     return isNaN(fallback) ? 0 : fallback;
 }
 
-const AnnexureA_Rules = {
-    _getLatestMe2mRecord: (me2mRecords) => {
-        if (!me2mRecords || me2mRecords.length === 0) return null;
-        let latestRow = null;
-        let maxTimestamp = -1;
-        me2mRecords.forEach(row => {
-            const rawDate = getValueByFlexibleKey(row, 'documentdate');
-            const timestamp = parseDateForSort(rawDate);
-            if (timestamp > maxTimestamp) {
-                maxTimestamp = timestamp;
-                latestRow = row;
-            }
-        });
-        return latestRow;
+/**
+ * Returns the ME2M record that has the latest Document Date
+ * among all records for a material. Returns null if no records.
+ */
+function getLatestMe2mRecord(me2mRecords) {
+    if (!me2mRecords || me2mRecords.length === 0) return null;
+    let latestRow = null;
+    let maxTimestamp = -1;
+    me2mRecords.forEach(row => {
+        const rawDate = getValueByFlexibleKey(row, 'documentdate');
+        const timestamp = parseDateForSort(rawDate);
+        if (timestamp > maxTimestamp) {
+            maxTimestamp = timestamp;
+            latestRow = row;
+        }
+    });
+    return latestRow;
+}
+
+/**
+ * Core LPP resolver — returns a rich result object used by all three columns:
+ *   status : 'no_records' | 'beyond_3_years' | 'valid'
+ *   price  : numeric net price (only when status === 'valid' or 'beyond_3_years')
+ *   latestTimestamp : ms timestamp of the latest PO date
+ *
+ * Column J  (LPP display value):
+ *   valid          → numeric price
+ *   beyond_3_years → "Beyond 3 Years"
+ *   no_records     → "No Records Found"
+ *
+ * Column K  (Budgetary Offer):
+ *   beyond_3_years → "Required"
+ *   otherwise      → ''
+ *
+ * Column L  (Estimated Rate):
+ *   valid          → price × (1.05 ^ yearsSincePO)  labelled "(5% yearly escalation)"
+ *   otherwise      → ''
+ */
+function resolveLPP(me2mRecords) {
+    if (!me2mRecords || me2mRecords.length === 0) {
+        return { status: 'no_records', price: null, latestTimestamp: 0 };
+    }
+
+    const latestRow = getLatestMe2mRecord(me2mRecords);
+    if (!latestRow) {
+        return { status: 'no_records', price: null, latestTimestamp: 0 };
+    }
+
+    const rawDate = getValueByFlexibleKey(latestRow, 'documentdate');
+    const latestTimestamp = parseDateForSort(rawDate);
+
+    if (!latestTimestamp || latestTimestamp === 0) {
+        return { status: 'no_records', price: null, latestTimestamp: 0 };
+    }
+
+    const today = new Date();
+    const threeYearsAgoMs = new Date(
+        today.getFullYear() - 3,
+        today.getMonth(),
+        today.getDate()
+    ).getTime();
+
+    const netPrice = parseSapNumeric(getValueByFlexibleKey(latestRow, 'netprice'));
+
+    if (latestTimestamp >= threeYearsAgoMs) {
+        return { status: 'valid', price: netPrice, latestTimestamp };
+    } else {
+        return { status: 'beyond_3_years', price: netPrice, latestTimestamp };
+    }
+}
+
+// Thin wrappers used by AnnexureA_Rules:
+
+function getLPP(me2mRecords) {
+    const r = resolveLPP(me2mRecords);
+    if (r.status === 'no_records')     return 'No Records Found';
+    if (r.status === 'beyond_3_years') return 'Beyond 3 Years';
+    return r.price; // numeric — ExcelJS will format as #,##0.00
+}
+
+function getBudgetaryOffer(me2mRecords) {
+    const r = resolveLPP(me2mRecords);
+    if (r.status === 'valid') return 'NA';
+    return 'Required'; // beyond_3_years or no_records
+}
+
+/**
+ * Estimated Rate (Column L):
+ * Only populated when LPP is valid (within 3 years).
+ * Apply 5% compound escalation per full year elapsed since the latest PO date.
+ *   0 full years elapsed → price × 1.05^0 = price (same year)
+ *   1 full year elapsed  → price × 1.05
+ *   2 full years elapsed → price × 1.05²
+ *   etc.
+ * Returns a number so ExcelJS formats it as currency.
+ * The label "(5% yearly escalation)" is written into the column header.
+ */
+function getEstimatedRate(me2mRecords) {
+    const r = resolveLPP(me2mRecords);
+    if (r.status !== 'valid' || !r.price) return 'As Per BO';
+
+    const today = new Date();
+    const poDate = new Date(r.latestTimestamp);
+
+    // Full years elapsed between PO date and today
+    let years = today.getFullYear() - poDate.getFullYear();
+    // Adjust if anniversary hasn't occurred yet this year
+    const anniversaryThisYear = new Date(today.getFullYear(), poDate.getMonth(), poDate.getDate());
+    if (today < anniversaryThisYear) years -= 1;
+    if (years < 0) years = 0;
+
+    const escalatedPrice = r.price * Math.pow(1.05, years);
+    return Math.round(escalatedPrice * 100) / 100; // round to 2 dp
+}
+
+
+// ==========================================
+// 2. MAPPING RULES ENGINE
+// ==========================================
+
+const AnnexureB_Rules = {
+    getSerialNumber: (serialNumber) => serialNumber,
+    getMaterialCode: (materialCode) => materialCode,
+    getOldMaterialCode: () => '',
+    getItemDescription: (zmmRecords, me2mRecords) => {
+        if (!zmmRecords || zmmRecords.length === 0) return '[DESCRIPTION NOT FOUND]';
+        return String(getValueByFlexibleKey(zmmRecords[0], 'description')).trim();
     },
-    
+    getPopulation: () => '',
+    getQtyProposed: () => '',
+    getQtyInStock: (zmmRecords) => {
+        if (!zmmRecords || zmmRecords.length === 0) return 0;
+        return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'stock'));
+    },
+    getSafetyStock: () => '',
+    getMandatorySpareQty: () => '',
+    getNormalLife: () => '',
+    getConsumptionYr4: (zmmRecords) => {
+        if (!zmmRecords || zmmRecords.length === 0) return 0;
+        return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'yr-4'));
+    },
+    getConsumptionYr3: (zmmRecords) => {
+        if (!zmmRecords || zmmRecords.length === 0) return 0;
+        return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'yr-3'));
+    },
+    getConsumptionYr2: (zmmRecords) => {
+        if (!zmmRecords || zmmRecords.length === 0) return 0;
+        return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'yr-2'));
+    },
+    getConsumptionPrevYr: (zmmRecords) => {
+        if (!zmmRecords || zmmRecords.length === 0) return 0;
+        return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'prevfn'));
+    },
+    getConsumptionCurrYr: (zmmRecords) => {
+        if (!zmmRecords || zmmRecords.length === 0) return 0;
+        return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'currfin.year'))
+            || parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'currfinyear'));
+    },
+    getFailureRate: () => '',
+    getPipelinePoNoDate: (zmmRecords) => {
+        if (!zmmRecords || zmmRecords.length === 0) return 'NA';
+        const poRows = zmmRecords.filter(r =>
+            String(getValueByFlexibleKey(r, 'doc.type')).trim().toLowerCase() === 'poitem'
+        );
+        if (poRows.length === 0) return 'NA';
+        const formattedPOs = poRows.map(row => {
+            const docDetail = String(getValueByFlexibleKey(row, 'doc.detail')).trim();
+            const poNumber = docDetail.split('/')[0].trim();
+            const reqDate = formatSapDate(getValueByFlexibleKey(row, 'req.date'));
+            return (poNumber && reqDate) ? `${poNumber} / ${reqDate}` : poNumber;
+        }).filter(Boolean);
+        return formattedPOs.length > 0 ? formattedPOs.join('\n') : 'NA';
+    },
+    getPipelinePoQty: (zmmRecords) => {
+        if (!zmmRecords || zmmRecords.length === 0) return 0;
+        const poRows = zmmRecords.filter(r =>
+            String(getValueByFlexibleKey(r, 'doc.type')).trim().toLowerCase() === 'poitem'
+        );
+        return poRows.reduce((sum, row) =>
+            sum + parseSapNumeric(getValueByFlexibleKey(row, 'quantity')), 0);
+    },
+    getPipelinePrNoDate: (zmmRecords) => {
+        if (!zmmRecords || zmmRecords.length === 0) return 'NA';
+        const prRows = zmmRecords.filter(r =>
+            String(getValueByFlexibleKey(r, 'doc.type')).trim().toLowerCase() === 'purrqs'
+        );
+        if (prRows.length === 0) return 'NA';
+        const formattedPRs = prRows.map(row => {
+            const docDetail = String(getValueByFlexibleKey(row, 'doc.detail')).trim();
+            const prNumber = docDetail.split('/')[0].trim();
+            const reqDate = formatSapDate(getValueByFlexibleKey(row, 'req.date'));
+            return (prNumber && reqDate) ? `${prNumber} / ${reqDate}` : prNumber;
+        }).filter(Boolean);
+        return formattedPRs.length > 0 ? formattedPRs.join('\n') : 'NA';
+    },
+    getPipelinePrQty: (zmmRecords) => {
+        if (!zmmRecords || zmmRecords.length === 0) return 0;
+        const prRows = zmmRecords.filter(r =>
+            String(getValueByFlexibleKey(r, 'doc.type')).trim().toLowerCase() === 'purrqs'
+        );
+        return prRows.reduce((sum, row) =>
+            sum + parseSapNumeric(getValueByFlexibleKey(row, 'quantity')), 0);
+    },
+    getLastPoNoDate: () => '',
+    getLastPoItemSlNo: () => '',
+    getJustification: () => 'INDENTOR TO FILL'
+};
+
+const AnnexureA_Rules = {
     getSerialNumber: (idx) => idx,
     getMaterialCode: (m) => m,
     getItemDescription: (zmmRecords, me2mRecords) => {
@@ -161,7 +379,7 @@ const AnnexureA_Rules = {
             const desc = String(getValueByFlexibleKey(zmmRecords[0], 'description')).trim();
             if (desc) return desc;
         }
-        return '[DESCRIPTION NOT FOUND]';
+        return 'No Records Found';
     },
     getPopulation: () => '',
     getQtyInStock: (zmmRecords) => {
@@ -170,85 +388,497 @@ const AnnexureA_Rules = {
     },
     getQtyRequested: () => '',
     getUnitOfMeasure: (me2mRecords) => {
-        if (!me2mRecords || me2mRecords.length === 0) return '';
-        return String(getValueByFlexibleKey(me2mRecords[0], 'orderunit')).trim();
+        if (!me2mRecords || me2mRecords.length === 0) return 'No Records Found';
+        return String(getValueByFlexibleKey(me2mRecords[0], 'orderunit')).trim() || 'No Records Found';
     },
     getLastPoNo: (me2mRecords) => {
-        const latestRow = AnnexureA_Rules._getLatestMe2mRecord(me2mRecords);
-        if (!latestRow) return 'NA';
-        return String(getValueByFlexibleKey(latestRow, 'purchasingdocument')).trim() || 'NA';
+        const latestRow = getLatestMe2mRecord(me2mRecords);
+        if (!latestRow) return 'No Records Found';
+        return String(getValueByFlexibleKey(latestRow, 'purchasingdocument')).trim() || 'No Records Found';
     },
     getLastPoDate: (me2mRecords) => {
-        const latestRow = AnnexureA_Rules._getLatestMe2mRecord(me2mRecords);
-        if (!latestRow) return 'NA';
-        return formatSapDate(getValueByFlexibleKey(latestRow, 'documentdate')) || 'NA';
+        const latestRow = getLatestMe2mRecord(me2mRecords);
+        if (!latestRow) return 'No Records Found';
+        return formatSapDate(getValueByFlexibleKey(latestRow, 'documentdate')) || 'No Records Found';
     },
-    // NEW: LPP Logic
-    getLPP: (me2mRecords) => {
-        if (!me2mRecords || me2mRecords.length === 0) return 'NA';
-        const latestRow = AnnexureA_Rules._getLatestMe2mRecord(me2mRecords);
-        if (!latestRow) return 'NA';
 
-        const threeYearsAgo = new Date();
-        threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3);
+    // Column J — LPP: Net Price from latest PO date record
+    //   within 3 years  → numeric price
+    //   beyond 3 years  → "Beyond 3 Years"
+    //   no records      → "No Records Found"
+    getLPP: (me2mRecords) => getLPP(me2mRecords),
 
-        const latestDate = new Date(parseDateForSort(getValueByFlexibleKey(latestRow, 'documentdate')));
-        const netPrice = parseSapNumeric(getValueByFlexibleKey(latestRow, 'net price'));
+    // Column K — Budgetary Offer: "Required" only when LPP is beyond 3 years
+    getBudgetaryOffer: (me2mRecords) => getBudgetaryOffer(me2mRecords),
 
-        if (latestDate >= threeYearsAgo) {
-            return netPrice;
-        } else {
-            return `Beyond 3 Years (${netPrice})`;
-        }
-    },
-    getBudgetaryOffer: () => '',
-    getEstimatedRate: () => '',
+    // Column L — Estimated Rate: LPP compounded at 5% per full year since PO date
+    //   Only populated when LPP is valid (within 3 years)
+    getEstimatedRate: (me2mRecords) => getEstimatedRate(me2mRecords),
+
     getTotalValue: () => ''
 };
 
+
 // ==========================================
-// 2. PROCESSOR SCHEMAS
+// 3. PROCESSOR SCHEMAS
 // ==========================================
-function generateAnnexureAWorkbook(masterList, zmmRawData, me2mRawData) {
-    const zmmRegistry = new Map();
-    zmmRawData.forEach(r => {
+const SCHEMA_TEMPLATES = {
+    // ── ANNEXURE B ──────────────────────────────────────────────────────────────
+    // Row 1: Title (A1:W1)
+    // Row 2: Sub-title (A2:W2)
+    // Row 3: PR info (A3:C3) | Value of indent (D3:W3)
+    // Row 4: Column numbers 1-19 across A-W
+    // Row 5: Header row 1  (spans rows 5-6 for most cols; K5:O5 merged for consumption)
+    // Row 6: Header row 2  (sub-headers for consumption cols K-O and pipeline Q-T)
+    // Data rows: 7, 8, 9 ...
+    // Footer rows: footerStart+0 (note*), +1 (Note label | note1), +2 (| note2), +3 (| note3), +4 (| certified)
+    AnnexureB_TopRows: [
+        ['Material Procurement Justification sheet'],                                           // row 1
+        ['Procurement of xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'],                     // row 2
+        ['PRNo.xxxxxx / Date:xxxxxx', '', '', 'Value of  indent in (Rs.): xxxxx/-'],           // row 3
+        [1,2,3,4,5,6,7,8,9,10,11,'','','','',12,13,'',14,'',15,16,17,18,19]                  // row 4 — col numbers
+    ],
+    AnnexureB_Headers_Row1: [
+        'Sl . No.', 'Material Code', 'Old Material code if any', 'Item Description',
+        'Population of Item ', 'Quantity Proposed Indent ', '\nQuantity in Stock as on date',
+        'Saftey Stock*\n(Minimum Qty. to be maintained at site )', 'Quantity under Mandatory Spare List as on date',
+        'Normal Life of item (Year)', 'Actual Consumption in last 5 Years ', '', '', '', '',
+        'Failure rate (frequent /normal)', 'Pipeline PO ', '', 'Pipeline PR', '',
+        'Last PO No. & Date', 'Last Po. Item Sl. No.', 'Justification of Qty'
+    ],
+    AnnexureB_Headers_Row2: [
+        '', '', '', '', '', '', '', '', '', '',
+        'Curr. Fin Yr-4', 'Curr. Fin Yr-3', 'Curr. Fin Yr-2', 'Previous Fin Yr', 'Curr. Fin Year',
+        '', 'PO No. /Date ', 'Qty ', 'PRNo. /Date ', 'Qty ', '', '', ''
+    ],
+    AnnexureB_FooterRows: [
+        ['* This data is to be given where the item is a critical spare as approved by ED (OS) / Minimum Qty. to be maintained at site for area of critical application'],
+        ['Note', '1. Please take care that sequence of items as in the PR is also maintained in this sheet'],
+        ['',    '2. This sheet is required to be filled for ZSPR type materials only.'],
+        ['',    'Indented items will be consumed in next two years'],
+        ['',    'Certified that there is no NMI/Surplus items in this list.']
+    ],
+
+    // ── ANNEXURE A ──────────────────────────────────────────────────────────────
+    // Row 1: Title green  (A1:M1)
+    // Row 2: ECM desc     (A2:G2 — left aligned, no fill)
+    // Row 3: PR No/Date   (A3:G3)
+    // Row 4: Est Value    (A4:G4)
+    // Row 5: ECM No       (A5:G5)
+    // Row 6+7: Headers    (each col merged A6:A7, B6:B7 … M6:M7 — yellow fill)
+    // Data rows: 8, 9 …
+    // TOTAL row: last row (A merged to L, M has SUM formula)
+    AnnexureA_TopRows: [
+        ['ANNEXURE-A : Estimation Sheet'],                                    // row 1
+        ['XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'],                // row 2 — ECM desc placeholder
+        ['PR No. :XXXXXXXXX , Date: XXXXXXX'],                               // row 3
+        ['Estimated Value : Rs. XXXXXXX'],                                   // row 4
+        ['PR ECM No. : XXXXXXXXXXXXXXXXXXXXXXX']                             // row 5
+    ],
+    AnnexureA_Headers: [
+        'S No.', 'Material', 'Material Description', 'Population',
+        'Stock Qty', 'Qty requested', 'Unit of Measure', 'Last PO No.',
+        'Last PO date', 'LPP', 'Budgetary offer', 'Estimated Rate\n(5% yearly escalation)', 'Total Value'
+    ]
+};
+
+
+// ==========================================
+// 4. DATA GENERATION FUNCTIONS
+// ==========================================
+
+function buildRegistry(rawData) {
+    const registry = new Map();
+    rawData.forEach(r => {
         const m = String(r['Material'] || '').trim();
-        if (m) { if (!zmmRegistry.has(m)) zmmRegistry.set(m, []); zmmRegistry.get(m).push(r); }
+        if (m) {
+            if (!registry.has(m)) registry.set(m, []);
+            registry.get(m).push(r);
+        }
     });
-    const me2mRegistry = new Map();
-    me2mRawData.forEach(r => {
-        const m = String(r['Material'] || '').trim();
-        if (m) { if (!me2mRegistry.has(m)) me2mRegistry.set(m, []); me2mRegistry.get(m).push(r); }
-    });
+    return registry;
+}
+
+function generateAnnexureBWorkbook(masterList, zmmRawData, me2mRawData) {
+    const zmmRegistry = buildRegistry(zmmRawData);
+    const me2mRegistry = buildRegistry(me2mRawData);
 
     const dataRows = masterList.map((materialCode, idx) => {
         const zmmRecords = zmmRegistry.get(materialCode) || [];
         const me2mRecords = me2mRegistry.get(materialCode) || [];
         return [
-            AnnexureA_Rules.getSerialNumber(idx + 1), AnnexureA_Rules.getMaterialCode(materialCode), AnnexureA_Rules.getItemDescription(zmmRecords, me2mRecords),
-            AnnexureA_Rules.getPopulation(), AnnexureA_Rules.getQtyInStock(zmmRecords), AnnexureA_Rules.getQtyRequested(),
-            AnnexureA_Rules.getUnitOfMeasure(me2mRecords), AnnexureA_Rules.getLastPoNo(me2mRecords), AnnexureA_Rules.getLastPoDate(me2mRecords),
-            AnnexureA_Rules.getLPP(me2mRecords), AnnexureA_Rules.getBudgetaryOffer(), AnnexureA_Rules.getEstimatedRate(), AnnexureA_Rules.getTotalValue()
+            AnnexureB_Rules.getSerialNumber(idx + 1),
+            AnnexureB_Rules.getMaterialCode(materialCode),
+            AnnexureB_Rules.getOldMaterialCode(),
+            AnnexureB_Rules.getItemDescription(zmmRecords, me2mRecords),
+            AnnexureB_Rules.getPopulation(),
+            AnnexureB_Rules.getQtyProposed(),
+            AnnexureB_Rules.getQtyInStock(zmmRecords),
+            AnnexureB_Rules.getSafetyStock(),
+            AnnexureB_Rules.getMandatorySpareQty(),
+            AnnexureB_Rules.getNormalLife(),
+            AnnexureB_Rules.getConsumptionYr4(zmmRecords),
+            AnnexureB_Rules.getConsumptionYr3(zmmRecords),
+            AnnexureB_Rules.getConsumptionYr2(zmmRecords),
+            AnnexureB_Rules.getConsumptionPrevYr(zmmRecords),
+            AnnexureB_Rules.getConsumptionCurrYr(zmmRecords),
+            AnnexureB_Rules.getFailureRate(),
+            AnnexureB_Rules.getPipelinePoNoDate(zmmRecords),
+            AnnexureB_Rules.getPipelinePoQty(zmmRecords),
+            AnnexureB_Rules.getPipelinePrNoDate(zmmRecords),
+            AnnexureB_Rules.getPipelinePrQty(zmmRecords),
+            AnnexureB_Rules.getLastPoNoDate(),
+            AnnexureB_Rules.getLastPoItemSlNo(),
+            AnnexureB_Rules.getJustification()
         ];
     });
-    
-    // Top Rows Schema
-    const topRows = [
-        ['ANNEXURE-A : Estimation Sheet'],
-        ['Project / ECM Description : xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'],
-        ['PR No. : xxxxxx / Date: xxxxxx'],
-        ['Estimated Value : Rs. xxxxxx'],
-        ['PR ECM No. : xxxxxxxxxxxxxxxxxxxxxxx']
+
+    return [
+        ...SCHEMA_TEMPLATES.AnnexureB_TopRows,
+        SCHEMA_TEMPLATES.AnnexureB_Headers_Row1,
+        SCHEMA_TEMPLATES.AnnexureB_Headers_Row2,
+        ...dataRows,
+        ...SCHEMA_TEMPLATES.AnnexureB_FooterRows
     ];
-    const headers = ['S No.', 'Material', 'Material Description', 'Population', 'Stock Qty', 'Qty requested', 'Unit of Measure', 'Last PO No.', 'Last PO date', 'LPP', 'Budgetary offer', 'Estimated Rate', 'Total Value'];
-    
-    return [...topRows, headers, ...dataRows, ['', '', '', '', '', '', '', '', '', '', '', 'TOTAL:', '']];
 }
 
+function generateAnnexureAWorkbook(masterList, zmmRawData, me2mRawData) {
+    const zmmRegistry = buildRegistry(zmmRawData);
+    const me2mRegistry = buildRegistry(me2mRawData);
+
+    const dataRows = masterList.map((materialCode, idx) => {
+        const zmmRecords = zmmRegistry.get(materialCode) || [];
+        const me2mRecords = me2mRegistry.get(materialCode) || [];
+        return [
+            AnnexureA_Rules.getSerialNumber(idx + 1),              // A - S No.
+            AnnexureA_Rules.getMaterialCode(materialCode),          // B - Material
+            AnnexureA_Rules.getItemDescription(zmmRecords, me2mRecords), // C - Description
+            AnnexureA_Rules.getPopulation(),                        // D - Population
+            AnnexureA_Rules.getQtyInStock(zmmRecords),             // E - Stock Qty
+            AnnexureA_Rules.getQtyRequested(),                      // F - Qty Requested
+            AnnexureA_Rules.getUnitOfMeasure(me2mRecords),         // G - Unit of Measure
+            AnnexureA_Rules.getLastPoNo(me2mRecords),              // H - Last PO No.
+            AnnexureA_Rules.getLastPoDate(me2mRecords),            // I - Last PO Date
+            AnnexureA_Rules.getLPP(me2mRecords),                   // J - LPP
+            AnnexureA_Rules.getBudgetaryOffer(me2mRecords),         // K - Budgetary Offer (Required if LPP > 3 yrs)
+            AnnexureA_Rules.getEstimatedRate(me2mRecords),          // L - Estimated Rate (5% compound escalation)
+            AnnexureA_Rules.getTotalValue()                         // M - Total Value
+        ];
+    });
+
+    // Header row appears TWICE in the array so ExcelJS places values in row 6 AND row 7
+    // (we merge them per-column later in formatting, so we only need one data row here)
+    const dataStartExcelRow = 8; // rows 1-5 top, row 6-7 header (merged), data from row 8
+    const totalExcelRow = dataStartExcelRow + dataRows.length;
+    const sumFormula = `=SUM(M${dataStartExcelRow}:M${totalExcelRow - 1})`;
+
+    return [
+        ...SCHEMA_TEMPLATES.AnnexureA_TopRows,          // rows 1-5
+        SCHEMA_TEMPLATES.AnnexureA_Headers,              // row 6 (merged down to row 7 in formatting)
+        [],                                              // row 7 — blank, merged up into row 6 headers
+        ...dataRows,                                     // rows 8+
+        ['TOTAL', '', '', '', '', '', '', '', '', '', '', '', sumFormula]  // TOTAL row
+    ];
+}
+
+
 // ==========================================
-// 3. UI AND EVENT LOGIC (Simplified for Annexure A output)
+// 5. EXCEL EXPORT WITH FORMATTING
 // ==========================================
-// ... [REST OF YOUR EXISTING UI LOGIC REMAINS THE SAME]
+
+async function exportFormattedExcel(dataArray, docType) {
+    const thin = { style: 'thin' };
+    const border = { top: thin, left: thin, bottom: thin, right: thin };
+
+    // ── ANNEXURE B ─────────────────────────────────────────────────────────────
+    if (docType === 'AnnexureB') {
+        const workbook = new ExcelJS.Workbook();
+        const sheet = workbook.addWorksheet('JUSTIFICATION');
+        sheet.addRows(dataArray);
+
+        const totalRows = sheet.rowCount;
+        // Footer starts after data rows. Schema has 5 footer rows.
+        const FOOTER_START = totalRows - 4; // rows: note*, Note+1, note2, note3, certified
+
+        // ── Merges ──────────────────────────────────────────────────────────────
+        sheet.mergeCells('A1:W1');   // Title
+        sheet.mergeCells('A2:W2');   // Sub-title
+        sheet.mergeCells('A3:C3');   // PR No / Date   ← schema: A3:C3
+        sheet.mergeCells('D3:W3');   // Value of indent ← schema: D3 onwards
+        // Header row 5: single-col headers span rows 5-6; consumption K5:O5; pipeline merges
+        ['A','B','C','D','E','F','G','H','I','J','P','U','V','W'].forEach(col =>
+            sheet.mergeCells(`${col}5:${col}6`)
+        );
+        sheet.mergeCells('K5:O5');   // Actual Consumption span
+        sheet.mergeCells('Q5:R5');   // Pipeline PO span
+        sheet.mergeCells('S5:T5');   // Pipeline PR span
+        // Footer merges
+        sheet.mergeCells(`A${FOOTER_START}:W${FOOTER_START}`);           // note*
+        sheet.mergeCells(`B${FOOTER_START+1}:W${FOOTER_START+1}`);       // note 1
+        sheet.mergeCells(`B${FOOTER_START+2}:W${FOOTER_START+2}`);       // note 2
+        sheet.mergeCells(`B${FOOTER_START+3}:W${FOOTER_START+3}`);       // note 3
+        sheet.mergeCells(`B${FOOTER_START+4}:W${FOOTER_START+4}`);       // certified
+
+        // ── Column widths — wide enough so data never wraps (except \n line breaks) ──
+        const bColWidths = {
+            A:6.11,  B:20.0,  C:18.0,  D:55.0,  E:14.0,  F:14.0,  G:14.0,
+            H:14.0,  I:14.0,  J:13.0,  K:11.0,  L:8.0,   M:12.0,  N:10.0,
+            O:8.0,   P:16.0,  Q:28.0,  R:9.0,   S:28.0,  T:7.0,
+            U:22.0,  V:16.0,  W:35.0
+        };
+        Object.entries(bColWidths).forEach(([col, w]) => { sheet.getColumn(col).width = w; });
+
+        // ── Row heights (from schema) ───────────────────────────────────────────
+        sheet.getRow(1).height = 17.4;
+        sheet.getRow(2).height = 14.4;
+        sheet.getRow(3).height = 25.5;
+        sheet.getRow(5).height = 35.25;
+        sheet.getRow(6).height = 39.6;
+
+        // ── Cell styling ────────────────────────────────────────────────────────
+        sheet.eachRow((row, rn) => {
+            row.eachCell({ includeEmpty: true }, (cell, cn) => {
+                if (rn === 1) {
+                    cell.font = { bold: true, name: 'Calibri' };
+                    cell.alignment = { horizontal: 'center', vertical: 'top', wrapText: false };
+                    cell.border = border;
+                } else if (rn === 2) {
+                    cell.font = { bold: true, name: 'Calibri' };
+                    cell.alignment = { horizontal: 'center', vertical: 'top', wrapText: false };
+                    cell.border = border;
+                } else if (rn === 3) {
+                    cell.font = { bold: true, name: 'Calibri' };
+                    cell.alignment = { horizontal: 'left', vertical: 'top', wrapText: false };
+                    cell.border = border;
+                } else if (rn === 4) {
+                    cell.font = { bold: true, name: 'Calibri' };
+                    cell.alignment = { horizontal: 'center', vertical: 'top', wrapText: false };
+                    cell.border = border;
+                } else if (rn === 5 || rn === 6) {
+                    // Header rows — center + wrap OK for headers
+                    cell.font = { bold: false, name: 'Calibri' };
+                    cell.alignment = { horizontal: 'center', vertical: 'center', wrapText: true };
+                    cell.border = border;
+                } else if (rn >= 7 && rn < FOOTER_START) {
+                    // DATA rows — left-aligned, no wrap (except explicit \n)
+                    cell.font = { name: 'Calibri' };
+                    cell.alignment = { horizontal: 'left', vertical: 'center', wrapText: false };
+                    cell.border = border;
+                } else if (rn === FOOTER_START) {
+                    cell.font = { bold: true, name: 'Calibri' };
+                    cell.alignment = { horizontal: 'left', vertical: 'center', wrapText: false };
+                } else if (rn > FOOTER_START) {
+                    if (cn === 1) {
+                        cell.font = { bold: true, name: 'Calibri' };
+                        cell.alignment = { horizontal: 'center', vertical: 'top', wrapText: false };
+                    } else {
+                        cell.font = { bold: true, name: 'Calibri' };
+                        cell.alignment = { horizontal: 'left', wrapText: false };
+                    }
+                }
+            });
+        });
+
+        // Pipeline PO/PR columns (Q, S) contain \n-separated entries — allow wrap there only
+        for (let rn = 7; rn < FOOTER_START; rn++) {
+            ['Q','S'].forEach(col => {
+                sheet.getCell(`${col}${rn}`).alignment = { horizontal: 'left', vertical: 'top', wrapText: true };
+            });
+        }
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        saveAs(new Blob([buffer]), `AnnexureB_Automated.xlsx`);
+
+    // ── ANNEXURE A ─────────────────────────────────────────────────────────────
+    } else if (docType === 'AnnexureA') {
+        const workbook = new ExcelJS.Workbook();
+        const sheet = workbook.addWorksheet('ESTIMATION');
+        sheet.addRows(dataArray);
+
+        const totalRows = sheet.rowCount;   // last row = TOTAL row
+        const DATA_START = 8;               // rows 1-5 top, 6-7 header, data from 8
+        const HEADER_ROW = 6;
+
+        // ── Merges ──────────────────────────────────────────────────────────────
+        sheet.mergeCells('A1:M1');    // Title — full width
+        // Rows 2-5: merge A:G only (schema shows A2:G2 pattern — left side info)
+        sheet.mergeCells('A2:G2');
+        sheet.mergeCells('A3:G3');
+        sheet.mergeCells('A4:G4');
+        sheet.mergeCells('A5:G5');
+        // Header: each column merges rows 6+7
+        ['A','B','C','D','E','F','G','H','I','J','K','L','M'].forEach(col =>
+            sheet.mergeCells(`${col}6:${col}7`)
+        );
+        // TOTAL row: merge A to L, M has SUM
+        sheet.mergeCells(`A${totalRows}:L${totalRows}`);
+
+        // ── Column widths — wide enough so data never wraps (except \n line breaks) ──
+        const aColWidths = {
+            A:6.0,   B:22.0,  C:50.0,  D:14.0,  E:14.0,  F:14.0,  G:22.0,
+            H:22.0,  I:16.0,  J:22.0,  K:25.0,  L:22.0,  M:28.0
+        };
+        Object.entries(aColWidths).forEach(([col, w]) => { sheet.getColumn(col).width = w; });
+
+        // ── Row heights (from schema) ───────────────────────────────────────────
+        [1,2,3,4,5].forEach(r => { sheet.getRow(r).height = 15.6; });
+        sheet.getRow(totalRows).height = 15.6;
+
+        // ── Cell styling ────────────────────────────────────────────────────────
+        const greenFill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF92D050' } };
+        const yellowFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
+
+        sheet.eachRow((row, rn) => {
+            row.eachCell({ includeEmpty: true }, (cell, cn) => {
+                if (rn === 1) {
+                    // Title: green fill, bold, centered
+                    cell.font = { bold: true, name: 'Calibri' };
+                    cell.fill = greenFill;
+                    cell.alignment = { horizontal: 'center', vertical: 'center', wrapText: false };
+                    cell.border = border;
+                } else if (rn >= 2 && rn <= 5) {
+                    // Info rows: bold, left-aligned, no fill, no wrap
+                    cell.font = { bold: true, name: 'Calibri' };
+                    cell.alignment = { horizontal: 'left', vertical: 'center', wrapText: false };
+                    cell.border = border;
+                } else if (rn === HEADER_ROW || rn === HEADER_ROW + 1) {
+                    // Header rows 6-7: yellow fill, bold, centered, wrapped
+                    cell.font = { bold: true, name: 'Calibri' };
+                    cell.fill = yellowFill;
+                    cell.alignment = { horizontal: 'center', vertical: 'center', wrapText: true };
+                    cell.border = border;
+                } else if (rn >= DATA_START && rn < totalRows) {
+                    // DATA rows — left-aligned, no wrap
+                    cell.font = { name: 'Calibri' };
+                    cell.alignment = { horizontal: 'left', vertical: 'center', wrapText: false };
+                    cell.border = border;
+                    // Col J (10) LPP — right-align numeric
+                    if (cn === 10 && typeof cell.value === 'number') {
+                        cell.numFmt = '#,##0.00';
+                        cell.alignment = { horizontal: 'right', vertical: 'center', wrapText: false };
+                    }
+                    // Col L (12) Estimated Rate — right-align numeric
+                    if (cn === 12 && typeof cell.value === 'number') {
+                        cell.numFmt = '#,##0.00';
+                        cell.alignment = { horizontal: 'right', vertical: 'center', wrapText: false };
+                    }
+                } else if (rn === totalRows) {
+                    // TOTAL row: yellow fill, bold
+                    cell.font = { bold: true, name: 'Calibri' };
+                    cell.fill = yellowFill;
+                    cell.alignment = { horizontal: 'center', vertical: 'center', wrapText: false };
+                    cell.border = border;
+                    if (cn === 13) {
+                        cell.numFmt = '#,##0.00';
+                        cell.alignment = { horizontal: 'right', vertical: 'center', wrapText: false };
+                    }
+                }
+            });
+        });
+
+        // TOTAL label — right-aligned in merged A:L
+        sheet.getCell(`A${totalRows}`).alignment = { horizontal: 'right', vertical: 'center', wrapText: false };
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        saveAs(new Blob([buffer]), `AnnexureA_Automated.xlsx`);
+    }
+}
+
+
+// ==========================================
+// 6. UI AND EVENT LOGIC
+// ==========================================
+let parsedZmmData = [];
+let parsedMe2mData = [];
+let sapUniqueMaterials = new Set();
+
+function parseExcelToJson(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+                resolve(json);
+            } catch (err) {
+                reject(err);
+            }
+        };
+        reader.onerror = (err) => reject(err);
+        reader.readAsArrayBuffer(file);
+    });
+}
+
+document.getElementById('scanBtn').addEventListener('click', async () => {
+    const zmmFile = document.getElementById('zmmFile').files[0];
+    const me2mFile = document.getElementById('me2mFile').files[0];
+    const statusDiv = document.getElementById('scanStatus');
+
+    if (!zmmFile) {
+        statusDiv.innerHTML = "<span style='color:red;'>Error: ZMMMATHIST file is mandatory.</span>";
+        return;
+    }
+
+    statusDiv.innerText = "Scanning files (This may take a moment)...";
+    document.getElementById('scanBtn').disabled = true;
+
+    try {
+        parsedZmmData = await parseExcelToJson(zmmFile);
+        parsedMe2mData = me2mFile ? await parseExcelToJson(me2mFile) : [];
+
+        sapUniqueMaterials.clear();
+        [...parsedZmmData, ...parsedMe2mData].forEach(row => {
+            const mat = String(row['Material'] || '').trim();
+            if (mat) sapUniqueMaterials.add(mat);
+        });
+
+        const tagsContainer = document.getElementById('materialTags');
+        tagsContainer.innerHTML = Array.from(sapUniqueMaterials).sort()
+            .map(m => `<span class="material-badge">${m}</span>`).join('');
+
+        document.getElementById('scanResult').innerText =
+            `✅ Found ${sapUniqueMaterials.size} unique materials in SAP.`;
+        document.getElementById('step-1').classList.remove('active-step');
+        document.getElementById('step-2').classList.add('active-step');
+
+    } catch (error) {
+        console.error(error);
+        statusDiv.innerHTML = `<span style='color:red;'>Scan failed. Check if file is valid Excel/CSV.</span>`;
+        document.getElementById('scanBtn').disabled = false;
+    }
+});
+
+document.getElementById('generateBtn').addEventListener('click', async () => {
+    const statusDiv = document.getElementById('genStatus');
+    const docType = document.getElementById('docType').value;
+    statusDiv.innerText = `Preparing ${docType}...`;
+
+    const rawText = document.getElementById('anchorList').value;
+    const pastedMaterials = rawText.split(/[\s,]+/).map(s => s.trim()).filter(Boolean);
+    const finalMasterList = Array.from(new Set([...sapUniqueMaterials, ...pastedMaterials])).sort();
+
+    if (finalMasterList.length === 0) {
+        statusDiv.innerHTML = "<span style='color:red;'>Error: No material codes found.</span>";
+        return;
+    }
+
+    try {
+        let finalDataArray;
+        if (docType === 'AnnexureB') {
+            finalDataArray = generateAnnexureBWorkbook(finalMasterList, parsedZmmData, parsedMe2mData);
+        } else {
+            finalDataArray = generateAnnexureAWorkbook(finalMasterList, parsedZmmData, parsedMe2mData);
+        }
+        await exportFormattedExcel(finalDataArray, docType);
+        statusDiv.innerHTML =
+            `<span style='color:green;'>✅ Success! ${docType} generated for ${finalMasterList.length} items.</span>`;
+    } catch (error) {
+        console.error(error);
+        statusDiv.innerHTML = `<span style='color:red;'>Error generating file: ${error.message}</span>`;
+    }
+});
 </script>
 </body>
 </html>
