@@ -20,13 +20,14 @@ function parseSapNumeric(value) {
 }
 
 /**
- * BULLETPROOF SAP / EXCEL DATE FIXER
+ * BULLETPROOF SAP / EXCEL DATE FIXER (UPDATED TO STANDARD SLASHES)
  */
 function formatSapDate(val) {
     if (val === undefined || val === null || val === '') return '';
     
     let strVal = String(val).trim();
     
+    // 1. Excel Serial Numbers
     if (/^\d{5}(\.\d+)?$/.test(strVal)) {
         const numVal = parseFloat(strVal);
         if (numVal > 40000 && numVal < 60000) { 
@@ -34,41 +35,44 @@ function formatSapDate(val) {
             const d = String(dateObj.getUTCDate()).padStart(2, '0');
             const m = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
             const y = dateObj.getUTCFullYear();
-            return `${d}.${m}.${y}`;
+            return `${d}/${m}/${y}`; // Changed to slashes
         }
     }
 
+    // 2. SAP Raw Internal Format (YYYYMMDD)
     if (/^\d{8}$/.test(strVal)) {
         const y = strVal.substring(0, 4);
         const m = strVal.substring(4, 6);
         const d = strVal.substring(6, 8);
-        return `${d}.${m}.${y}`;
+        return `${d}/${m}/${y}`; // Changed to slashes
     }
 
+    // 3. Catch existing formats and normalize to slashes
     if (/^\d{2}[\.\/\-]\d{2}[\.\/\-]\d{4}$/.test(strVal)) {
-        return strVal.replace(/[\/\-]/g, '.'); 
+        return strVal.replace(/[\.\-]/g, '/'); // Force slashes instead of dots/dashes
     }
 
+    // 4. Standard web date parsing
     const parsedDate = new Date(strVal);
     if (!isNaN(parsedDate.getTime())) {
         const d = String(parsedDate.getDate()).padStart(2, '0');
         const m = String(parsedDate.getMonth() + 1).padStart(2, '0');
         const y = parsedDate.getFullYear();
-        return `${d}.${m}.${y}`;
+        return `${d}/${m}/${y}`; // Changed to slashes
     }
 
     return strVal;
 }
 
 /**
- * DATE SORTER ENGINE
- * Converts clean DD.MM.YYYY string into numerical timestamp for reliable > or < comparison
+ * DATE SORTER ENGINE (UPDATED TO READ SLASHES)
  */
 function parseDateForSort(dateStr) {
     if (!dateStr) return 0;
     const formatted = formatSapDate(dateStr);
-    if (/^\d{2}\.\d{2}\.\d{4}$/.test(formatted)) {
-        const parts = formatted.split('.');
+    // Now checks for DD/MM/YYYY to create a sortable timestamp
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(formatted)) {
+        const parts = formatted.split('/');
         return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`).getTime();
     }
     const fallback = new Date(formatted).getTime();
