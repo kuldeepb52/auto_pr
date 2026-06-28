@@ -1,71 +1,602 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SAP Procurement Annexure Generator</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AUTO_PR – SAP Annexure Generator</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz@14..32&display=swap" rel="stylesheet" />
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 30px; background-color: #f4f6f9; color: #333; }
-        .container { max-width: 800px; margin: auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        h2 { color: #0056b3; border-bottom: 2px solid #0056b3; padding-bottom: 8px; }
-        .file-group { margin-bottom: 20px; display: flex; flex-direction: column; }
-        label { font-weight: bold; margin-bottom: 5px; color: #444; }
-        input[type="file"], select { padding: 10px; border: 1px solid #ccc; background: #fafafa; border-radius: 4px; }
-        textarea { padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-family: monospace; resize: vertical; }
-        button { background-color: #0056b3; color: white; padding: 12px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 10px; }
-        button:hover { background-color: #004494; }
-        .btn-success { background-color: #28a745; }
-        .btn-success:hover { background-color: #218838; }
-        #status { margin-top: 15px; font-weight: bold; }
-        .step-panel { display: none; padding: 20px; background: #fdfdfd; border: 1px solid #e0e0e0; border-radius: 6px; margin-top: 20px; }
-        .active-step { display: block; }
-        .material-badge { display: inline-block; background: #e9ecef; border: 1px solid #ced4da; padding: 4px 8px; border-radius: 4px; margin: 4px; font-size: 14px; }
+        /* ===== RESET & BASE ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+            padding: 2rem 1rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .app-wrapper {
+            max-width: 880px;
+            width: 100%;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+
+        /* ===== HEADER ===== */
+        .app-header {
+            margin-bottom: 1.2rem;
+            text-align: center;
+        }
+        .app-header h1 {
+            font-size: 2.2rem;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            color: #0f172a;
+        }
+        .app-header h1 span {
+            color: #2563eb;
+        }
+        .app-header .subhead {
+            color: #64748b;
+            font-size: 1rem;
+            margin-top: 0.2rem;
+            font-weight: 400;
+        }
+
+        /* ===== WELCOME BANNER ===== */
+        .welcome {
+            background: #f1f5f9;
+            padding: 0.7rem 1.5rem;
+            margin-bottom: 1.8rem;
+            text-align: center;
+            border-left: 4px solid #2563eb;
+            font-size: 0.95rem;
+            color: #1e293b;
+        }
+
+        /* ===== TOP NAV / STEP INDICATOR ===== */
+        .top-nav {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem 0.8rem;
+            margin-bottom: 2rem;
+            padding: 0.6rem 1rem;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+        }
+        .top-nav .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.85rem;
+            color: #94a3b8;
+            padding: 0.3rem 0.6rem;
+            border: 1px solid transparent;
+            background: transparent;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.15s;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        .top-nav .nav-item .num {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            border: 1px solid #d1d9e6;
+            border-radius: 50%;
+            font-size: 0.75rem;
+            font-weight: 500;
+            background: #ffffff;
+            color: #94a3b8;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+        .top-nav .nav-item.active .num {
+            border-color: #2563eb;
+            background: #2563eb;
+            color: #ffffff;
+        }
+        .top-nav .nav-item.completed .num {
+            border-color: #2563eb;
+            background: #2563eb;
+            color: #ffffff;
+        }
+        .top-nav .nav-item.active {
+            color: #0f172a;
+            font-weight: 500;
+        }
+        .top-nav .nav-item.completed {
+            color: #2563eb;
+        }
+        .top-nav .nav-item:hover:not(.inactive) {
+            background: #f1f5f9;
+            border-color: #d1d9e6;
+        }
+        .top-nav .nav-item.action-item {
+            color: #475569;
+            font-weight: 400;
+        }
+        .top-nav .nav-item.action-item .num {
+            border-color: #d1d9e6;
+            background: #f8fafc;
+            color: #64748b;
+        }
+        .top-nav .nav-item.action-item:hover .num {
+            border-color: #2563eb;
+            background: #eff6ff;
+            color: #2563eb;
+        }
+        .top-nav .nav-item.action-item:hover {
+            color: #1e293b;
+        }
+        .top-nav .nav-divider {
+            width: 1px;
+            height: 28px;
+            background: #e2e8f0;
+            flex-shrink: 0;
+        }
+        .top-nav .nav-item .label {
+            font-size: 0.82rem;
+        }
+
+        /* ===== SECTIONS ===== */
+        .section {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            padding: 2rem 2.5rem;
+            margin-bottom: 2rem;
+        }
+        .section-title {
+            font-size: 1.2rem;
+            font-weight: 500;
+            margin-bottom: 0.3rem;
+            color: #0f172a;
+        }
+        .section-desc {
+            color: #64748b;
+            font-size: 0.95rem;
+            margin-bottom: 1.8rem;
+            line-height: 1.5;
+        }
+
+        /* ===== FILE INPUTS ===== */
+        .field-group {
+            margin-bottom: 1.6rem;
+        }
+        .field-group label {
+            display: block;
+            font-weight: 500;
+            font-size: 0.95rem;
+            color: #1e293b;
+            margin-bottom: 0.3rem;
+        }
+        .field-group label .hint {
+            font-weight: 400;
+            color: #94a3b8;
+            font-size: 0.85rem;
+            margin-left: 0.3rem;
+        }
+        .field-group .file-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.8rem;
+            margin-top: 0.2rem;
+        }
+        .field-group input[type="file"] {
+            display: inline-block;
+            padding: 0.2rem 0;
+            font-size: 0.9rem;
+            border: none;
+            background: transparent;
+            color: #1e293b;
+        }
+        .field-group .file-name {
+            font-size: 0.9rem;
+            color: #475569;
+            background: #f1f5f9;
+            padding: 0.1rem 0.8rem;
+            border: 1px solid #d1d9e6;
+        }
+        .field-group .file-name.empty {
+            color: #94a3b8;
+            font-style: italic;
+        }
+        .mandatory {
+            color: #b91c1c;
+            font-weight: 600;
+        }
+        .field-group .help {
+            font-size: 0.85rem;
+            color: #94a3b8;
+            margin-top: 0.2rem;
+        }
+
+        /* ===== BUTTONS ===== */
+        .btn {
+            display: inline-block;
+            padding: 0.5rem 1.6rem;
+            border: 1px solid #d1d9e6;
+            background: #ffffff;
+            color: #1e293b;
+            font-weight: 500;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+            text-decoration: none;
+            font-family: inherit;
+        }
+        .btn:hover:not(:disabled) {
+            background: #f1f5f9;
+            border-color: #94a3b8;
+        }
+        .btn-primary {
+            background: #ffffff;
+            border-color: #2563eb;
+            color: #2563eb;
+        }
+        .btn-primary:hover:not(:disabled) {
+            background: #eff6ff;
+            border-color: #1d4ed8;
+        }
+        .btn-success {
+            background: #ffffff;
+            border-color: #2563eb;
+            color: #2563eb;
+        }
+        .btn-success:hover:not(:disabled) {
+            background: #eff6ff;
+            border-color: #1d4ed8;
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: default;
+        }
+        .btn .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #94a3b8;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            vertical-align: middle;
+            margin-right: 0.5rem;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .action-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-top: 1.2rem;
+        }
+
+        /* ===== STATUS MESSAGES ===== */
+        .alert {
+            margin-top: 1.2rem;
+            padding: 0.7rem 1rem;
+            border-left: 4px solid #94a3b8;
+            background: #f8fafc;
+            font-size: 0.95rem;
+            display: none;
+        }
+        .alert.error {
+            border-left-color: #b91c1c;
+            background: #fef2f2;
+            color: #7f1d1d;
+        }
+        .alert.success {
+            border-left-color: #2563eb;
+            background: #eff6ff;
+            color: #1e3a8a;
+        }
+        .alert.info {
+            border-left-color: #2563eb;
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+
+        /* ===== MATERIAL TAGS ===== */
+        .material-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+            max-height: 150px;
+            overflow-y: auto;
+            padding: 0.5rem 0;
+            margin: 0.4rem 0 0.2rem;
+        }
+        .material-tag {
+            background: #f1f5f9;
+            color: #1e293b;
+            padding: 0.1rem 0.8rem;
+            border: 1px solid #d1d9e6;
+            font-size: 0.85rem;
+            font-weight: 400;
+        }
+
+        /* ===== TEXTAREA ===== */
+        textarea {
+            width: 100%;
+            padding: 0.6rem 0.8rem;
+            border: 1px solid #d1d9e6;
+            font-family: 'Inter', monospace;
+            font-size: 0.9rem;
+            background: #ffffff;
+            resize: vertical;
+            transition: border-color 0.15s;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #2563eb;
+        }
+        .form-group {
+            margin-bottom: 1.6rem;
+        }
+        .form-group label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 0.3rem;
+            color: #1e293b;
+        }
+        .form-group .help-text {
+            font-weight: 400;
+            color: #94a3b8;
+            font-size: 0.85rem;
+            display: block;
+            margin-top: 0.2rem;
+        }
+
+        /* ===== DIVIDER ===== */
+        .divider {
+            border: 0;
+            border-top: 1px solid #e2e8f0;
+            margin: 2rem 0 1.6rem;
+        }
+
+        /* ===== HELP / GUIDE (condensed) ===== */
+        .help-section {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 1.2rem 2rem;
+            margin-bottom: 2rem;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.8rem;
+        }
+        .help-section .help-text {
+            font-size: 0.95rem;
+            color: #475569;
+        }
+        .help-section .help-text strong {
+            color: #0f172a;
+        }
+        .help-section .help-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.8rem;
+        }
+        .help-section .help-actions .btn-sm {
+            padding: 0.3rem 1.2rem;
+            font-size: 0.85rem;
+            border: 1px solid #d1d9e6;
+            background: #ffffff;
+            color: #1e293b;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+            text-decoration: none;
+            font-family: inherit;
+        }
+        .help-section .help-actions .btn-sm:hover {
+            background: #f1f5f9;
+            border-color: #94a3b8;
+        }
+        .help-section .help-actions .btn-sm.primary {
+            border-color: #2563eb;
+            color: #2563eb;
+        }
+        .help-section .help-actions .btn-sm.primary:hover {
+            background: #eff6ff;
+            border-color: #1d4ed8;
+        }
+
+        /* ===== FOOTER ===== */
+        footer {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #e2e8f0;
+            text-align: center;
+            font-size: 0.9rem;
+            color: #94a3b8;
+        }
+        footer .credit {
+            color: #475569;
+        }
+        footer .contact {
+            color: #475569;
+            margin-top: 0.2rem;
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 640px) {
+            .app-header h1 { font-size: 1.8rem; }
+            .section { padding: 1.5rem; }
+            .field-group .file-row { flex-direction: column; align-items: stretch; }
+            .btn { width: 100%; justify-content: center; text-align: center; }
+            .action-row { flex-direction: column; }
+            .top-nav { gap: 0.3rem 0.6rem; padding: 0.5rem 0.8rem; }
+            .top-nav .nav-item { font-size: 0.75rem; padding: 0.2rem 0.4rem; }
+            .top-nav .nav-item .num { width: 20px; height: 20px; font-size: 0.7rem; }
+            .top-nav .nav-item .label { font-size: 0.7rem; }
+            .top-nav .nav-divider { height: 20px; }
+            .help-section { flex-direction: column; align-items: stretch; text-align: center; }
+            .help-section .help-actions { justify-content: center; }
+        }
+        @media (max-width: 480px) {
+            .top-nav .nav-item .label { display: none; }
+            .top-nav .nav-item { padding: 0.2rem 0.4rem; }
+        }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>SAP Procurement Annexure Generator</h2>
-    
-    <div id="step-1" class="step-panel active-step">
-        <h3>Step 1: Upload SAP Data</h3>
-        <p>Upload your raw SAP export sheets to establish the database.</p>
-        <div class="file-group">
-            <label for="zmmFile">ZMMMATHIST File (.xlsx / .csv) *</label>
-            <input type="file" id="zmmFile" accept=".xlsx, .xls, .csv">
-        </div>
-        <div class="file-group">
-            <label for="me2mFile">ME2M File (.xlsx / .csv) [Optional]</label>
-            <input type="file" id="me2mFile" accept=".xlsx, .xls, .csv">
-        </div>
-        <button id="scanBtn">Scan SAP Files</button>
-        <div id="scanStatus" id="status"></div>
+<div class="app-wrapper">
+
+    <!-- HEADER -->
+    <div class="app-header">
+        <h1><span>AUTO</span>_PR</h1>
+        <div class="subhead">SAP Annexure Generator – download A or B separately</div>
     </div>
 
-    <div id="step-2" class="step-panel">
-        <h3>Step 2: Generate Document</h3>
-        <div id="scanResult" style="color: green; font-weight: bold; margin-bottom: 10px;"></div>
-        <div id="materialTags" style="margin-bottom: 20px; max-height: 150px; overflow-y: auto;"></div>
-
-        <div class="file-group">
-            <label for="docType">Select Annexure Type:</label>
-            <select id="docType">
-                <option value="AnnexureB">Annexure B (Procurement Justification)</option>
-                <option value="AnnexureA">Annexure A (Estimation Sheet)</option>
-            </select>
-        </div>
-
-        <div class="file-group">
-            <label for="anchorList">Paste Target Material Codes:</label>
-            <textarea id="anchorList" rows="6" placeholder="Paste material codes here...&#10;M123456789&#10;M987654321"></textarea>
-        </div>
-
-        <button id="generateBtn" class="btn-success">Generate Document</button>
-        <div id="genStatus" id="status"></div>
+    <!-- WELCOME -->
+    <div class="welcome">
+        Welcome to AUTO_PR – streamline your SAP annexure generation.
     </div>
+
+    <!-- TOP NAVIGATION: Steps + Actions -->
+    <div class="top-nav" id="topNav">
+        <!-- Step 1: Upload -->
+        <button class="nav-item active" data-step="1" id="navUpload">
+            <span class="num">1</span>
+            <span class="label">Upload</span>
+        </button>
+        <span class="nav-divider"></span>
+        <!-- Step 2: Scan -->
+        <button class="nav-item" data-step="2" id="navScan">
+            <span class="num">2</span>
+            <span class="label">Scan</span>
+        </button>
+        <span class="nav-divider"></span>
+        <!-- Step 3: Generate -->
+        <button class="nav-item" data-step="3" id="navGenerate">
+            <span class="num">3</span>
+            <span class="label">Generate</span>
+        </button>
+        <span class="nav-divider"></span>
+        <!-- Action 4: How to use -->
+        <a class="nav-item action-item" href="#" id="navHowTo" target="_blank">
+            <span class="num">4</span>
+            <span class="label">How to use</span>
+        </a>
+        <span class="nav-divider"></span>
+        <!-- Action 5: Report a bug -->
+        <a class="nav-item action-item" href="#" id="navBug">
+            <span class="num">5</span>
+            <span class="label">Report a bug</span>
+        </a>
+        <span class="nav-divider"></span>
+        <!-- Action 6: Feedback -->
+        <a class="nav-item action-item" href="#" id="navFeedback">
+            <span class="num">6</span>
+            <span class="label">Feedback</span>
+        </a>
+    </div>
+
+    <!-- SECTION 1: UPLOAD -->
+    <div class="section" id="uploadSection">
+        <div class="section-title">Upload SAP data</div>
+        <div class="section-desc">Provide your raw SAP export files to build the material database.</div>
+
+        <!-- ZMM -->
+        <div class="field-group">
+            <label>ZMMMATHIST <span class="mandatory">*</span> <span class="hint">(material master with consumption)</span></label>
+            <div class="file-row">
+                <input type="file" id="zmmFile" accept=".xlsx,.xls,.csv" />
+                <span class="file-name empty" id="zmmFileName">No file selected</span>
+            </div>
+            <div class="help">Contains descriptions, stock, consumption history, and pipeline PO/PR details.</div>
+        </div>
+
+        <!-- ME2M -->
+        <div class="field-group">
+            <label>ME2M <span class="hint">(optional, used for Annexure A)</span></label>
+            <div class="file-row">
+                <input type="file" id="me2mFile" accept=".xlsx,.xls,.csv" />
+                <span class="file-name empty" id="me2mFileName">No file selected</span>
+            </div>
+            <div class="help">Provides PO history, net prices, and units for estimation sheets.</div>
+        </div>
+
+        <!-- ME2M Plant -->
+        <div class="field-group">
+            <label>ME2M (Plant Code) <span class="hint">(optional, used for Annexure B columns U &amp; V)</span></label>
+            <div class="file-row">
+                <input type="file" id="me2mPlantFile" accept=".xlsx,.xls,.csv" />
+                <span class="file-name empty" id="me2mPlantFileName">No file selected</span>
+            </div>
+            <div class="help">If provided, populates last PO number/date and item number in Annexure B.</div>
+        </div>
+
+        <button id="scanBtn" class="btn btn-primary">Scan files and build database</button>
+        <div id="scanStatus" class="alert info" style="display:none;">
+            <span>Ready to scan</span>
+        </div>
+    </div>
+
+    <!-- SECTION 2: GENERATE -->
+    <div class="section" id="generateSection">
+        <div class="section-title">Generate annexure</div>
+        <div class="section-desc">After scanning, choose the annexure you need.</div>
+
+        <div id="scanResult" style="font-weight:500;color:#2563eb;margin-bottom:0.5rem;"></div>
+        <div id="materialTagsContainer" class="material-tags"></div>
+
+        <hr class="divider" />
+
+        <div class="form-group">
+            <label for="anchorList">Additional material codes</label>
+            <textarea id="anchorList" rows="3" placeholder="One per line or comma-separated, e.g.&#10;M123456789&#10;M987654321"></textarea>
+            <span class="help-text">These will be merged with the materials found in SAP. Leave empty to use only scanned materials.</span>
+        </div>
+
+        <div class="action-row">
+            <button id="genA" class="btn btn-success" disabled>Download Annexure A</button>
+            <button id="genB" class="btn btn-success" disabled>Download Annexure B</button>
+        </div>
+        <div id="genStatus" class="alert info" style="display:none;">
+            <span>Awaiting scan completion</span>
+        </div>
+    </div>
+
+    <!-- CONDENSED HELP / QUICK ACTIONS -->
+    <div class="help-section">
+        <span class="help-text"><strong>How to use AUTO_PR:</strong> Upload &rarr; Scan &rarr; Generate. Simple as that.</span>
+        <span class="help-actions">
+            <a href="#" class="btn-sm primary" id="helpHowTo">How to use (PDF)</a>
+            <a href="#" class="btn-sm" id="helpBug">Report a bug</a>
+            <a href="#" class="btn-sm" id="helpFeedback">Feedback</a>
+        </span>
+    </div>
+
+    <!-- FOOTER -->
+    <footer>
+        <div class="credit">Designed and Developed by Kuldeep Kumar</div>
+        <div class="contact">Contact: +91-12345-67890</div>
+    </footer>
+
 </div>
 
 <script>
@@ -73,10 +604,6 @@
 // 1. HELPER / UTILITY FUNCTIONS
 // ==========================================
 
-/**
- * Flexible key lookup: finds a value in a row object whose key
- * contains the given substring (case-insensitive, whitespace-ignored).
- */
 function getValueByFlexibleKey(row, substringMatch) {
     if (!row) return '';
     const target = substringMatch.toLowerCase().replace(/\s+/g, '');
@@ -88,25 +615,15 @@ function getValueByFlexibleKey(row, substringMatch) {
     return '';
 }
 
-/**
- * Parses SAP numeric strings that may contain commas (e.g. "1,234.56").
- */
 function parseSapNumeric(value) {
     if (value === undefined || value === null) return 0;
     const cleanStr = String(value).replace(/,/g, '').trim();
     return parseFloat(cleanStr) || 0;
 }
 
-/**
- * Converts various SAP date formats to DD.MM.YYYY string.
- * Handles: Excel serial numbers, YYYYMMDD strings, ISO strings,
- * and already-formatted DD.MM.YYYY / DD/MM/YYYY / DD-MM-YYYY.
- */
 function formatSapDate(val) {
     if (val === undefined || val === null || val === '') return '';
     let strVal = String(val).trim();
-
-    // Excel serial number (e.g. 44927 = 01.01.2023)
     if (/^\d{5}(\.\d+)?$/.test(strVal)) {
         const numVal = parseFloat(strVal);
         if (numVal > 30000 && numVal < 70000) {
@@ -117,21 +634,15 @@ function formatSapDate(val) {
             return `${d}.${m}.${y}`;
         }
     }
-
-    // YYYYMMDD compact format
     if (/^\d{8}$/.test(strVal)) {
         const y = strVal.substring(0, 4);
         const m = strVal.substring(4, 6);
         const d = strVal.substring(6, 8);
         return `${d}.${m}.${y}`;
     }
-
-    // Already DD.MM.YYYY or DD/MM/YYYY or DD-MM-YYYY
     if (/^\d{2}[\.\/\-]\d{2}[\.\/\-]\d{4}$/.test(strVal)) {
         return strVal.replace(/[\/\-]/g, '.');
     }
-
-    // Fallback: try JS Date parsing (handles ISO strings, etc.)
     const parsedDate = new Date(strVal);
     if (!isNaN(parsedDate.getTime())) {
         const d = String(parsedDate.getDate()).padStart(2, '0');
@@ -139,18 +650,12 @@ function formatSapDate(val) {
         const y = parsedDate.getFullYear();
         return `${d}.${m}.${y}`;
     }
-
-    return strVal; // return as-is if nothing works
+    return strVal;
 }
 
-/**
- * Converts a formatted or raw date value to a Unix timestamp (ms)
- * for chronological sorting. Returns 0 if unparseable.
- */
 function parseDateForSort(dateStr) {
     if (!dateStr) return 0;
     const formatted = formatSapDate(dateStr);
-    // DD.MM.YYYY → sortable
     if (/^\d{2}\.\d{2}\.\d{4}$/.test(formatted)) {
         const parts = formatted.split('.');
         return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`).getTime();
@@ -159,16 +664,12 @@ function parseDateForSort(dateStr) {
     return isNaN(fallback) ? 0 : fallback;
 }
 
-/**
- * Returns the ME2M record that has the latest Document Date
- * among all records for a material. Returns null if no records.
- */
-function getLatestMe2mRecord(me2mRecords) {
-    if (!me2mRecords || me2mRecords.length === 0) return null;
+function getLatestRecord(records, dateKey = 'documentdate') {
+    if (!records || records.length === 0) return null;
     let latestRow = null;
     let maxTimestamp = -1;
-    me2mRecords.forEach(row => {
-        const rawDate = getValueByFlexibleKey(row, 'documentdate');
+    records.forEach(row => {
+        const rawDate = getValueByFlexibleKey(row, dateKey);
         const timestamp = parseDateForSort(rawDate);
         if (timestamp > maxTimestamp) {
             maxTimestamp = timestamp;
@@ -178,51 +679,30 @@ function getLatestMe2mRecord(me2mRecords) {
     return latestRow;
 }
 
-/**
- * Core LPP resolver — returns a rich result object used by all three columns:
- *   status : 'no_records' | 'beyond_3_years' | 'valid'
- *   price  : numeric net price (only when status === 'valid' or 'beyond_3_years')
- *   latestTimestamp : ms timestamp of the latest PO date
- *
- * Column J  (LPP display value):
- *   valid          → numeric price
- *   beyond_3_years → "Beyond 3 Years"
- *   no_records     → "No Records Found"
- *
- * Column K  (Budgetary Offer):
- *   beyond_3_years → "Required"
- *   otherwise      → ''
- *
- * Column L  (Estimated Rate):
- *   valid          → price × (1.05 ^ yearsSincePO)  labelled "(5% yearly escalation)"
- *   otherwise      → ''
- */
+function getLatestMe2mRecord(me2mRecords) {
+    return getLatestRecord(me2mRecords, 'documentdate');
+}
+
 function resolveLPP(me2mRecords) {
     if (!me2mRecords || me2mRecords.length === 0) {
         return { status: 'no_records', price: null, latestTimestamp: 0 };
     }
-
     const latestRow = getLatestMe2mRecord(me2mRecords);
     if (!latestRow) {
         return { status: 'no_records', price: null, latestTimestamp: 0 };
     }
-
     const rawDate = getValueByFlexibleKey(latestRow, 'documentdate');
     const latestTimestamp = parseDateForSort(rawDate);
-
     if (!latestTimestamp || latestTimestamp === 0) {
         return { status: 'no_records', price: null, latestTimestamp: 0 };
     }
-
     const today = new Date();
     const threeYearsAgoMs = new Date(
         today.getFullYear() - 3,
         today.getMonth(),
         today.getDate()
     ).getTime();
-
     const netPrice = parseSapNumeric(getValueByFlexibleKey(latestRow, 'netprice'));
-
     if (latestTimestamp >= threeYearsAgoMs) {
         return { status: 'valid', price: netPrice, latestTimestamp };
     } else {
@@ -230,58 +710,39 @@ function resolveLPP(me2mRecords) {
     }
 }
 
-// Thin wrappers used by AnnexureA_Rules:
-
 function getLPP(me2mRecords) {
     const r = resolveLPP(me2mRecords);
     if (r.status === 'no_records')     return 'No Records Found';
     if (r.status === 'beyond_3_years') return 'Beyond 3 Years';
-    return r.price; // numeric — ExcelJS will format as #,##0.00
+    return r.price;
 }
 
 function getBudgetaryOffer(me2mRecords) {
     const r = resolveLPP(me2mRecords);
     if (r.status === 'valid') return 'NA';
-    return 'Required'; // beyond_3_years or no_records
+    return 'Required';
 }
 
-/**
- * Estimated Rate (Column L):
- * Only populated when LPP is valid (within 3 years).
- * Apply 5% compound escalation per full year elapsed since the latest PO date.
- *   0 full years elapsed → price × 1.05^0 = price (same year)
- *   1 full year elapsed  → price × 1.05
- *   2 full years elapsed → price × 1.05²
- *   etc.
- * Returns a number so ExcelJS formats it as currency.
- * The label "(5% yearly escalation)" is written into the column header.
- */
 function getEstimatedRate(me2mRecords) {
     const r = resolveLPP(me2mRecords);
     if (r.status !== 'valid' || !r.price) return 'As Per BO';
-
     const today = new Date();
     const poDate = new Date(r.latestTimestamp);
-
-    // Full years elapsed between PO date and today
     let years = today.getFullYear() - poDate.getFullYear();
-    // Adjust if anniversary hasn't occurred yet this year
     const anniversaryThisYear = new Date(today.getFullYear(), poDate.getMonth(), poDate.getDate());
     if (today < anniversaryThisYear) years -= 1;
     if (years < 0) years = 0;
-
     const escalatedPrice = r.price * Math.pow(1.05, years);
-    return Math.round(escalatedPrice * 100) / 100; // round to 2 dp
+    return Math.round(escalatedPrice * 100) / 100;
 }
 
-
 // ==========================================
-// 2. MAPPING RULES ENGINE
+// 2. MAPPING RULES
 // ==========================================
 
 const AnnexureB_Rules = {
-    getSerialNumber: (serialNumber) => serialNumber,
-    getMaterialCode: (materialCode) => materialCode,
+    getSerialNumber: (s) => s,
+    getMaterialCode: (m) => m,
     getOldMaterialCode: () => '',
     getItemDescription: (zmmRecords, me2mRecords) => {
         if (!zmmRecords || zmmRecords.length === 0) return '[DESCRIPTION NOT FOUND]';
@@ -362,8 +823,24 @@ const AnnexureB_Rules = {
         return prRows.reduce((sum, row) =>
             sum + parseSapNumeric(getValueByFlexibleKey(row, 'quantity')), 0);
     },
-    getLastPoNoDate: () => '',
-    getLastPoItemSlNo: () => '',
+    getLastPoNoDate: (plantRecords) => {
+        if (!plantRecords || plantRecords.length === 0) return 'NA';
+        const latest = getLatestRecord(plantRecords, 'documentdate');
+        if (!latest) return 'NA';
+        const poNumber = String(getValueByFlexibleKey(latest, 'purchasingdocument')).trim();
+        const docDate = formatSapDate(getValueByFlexibleKey(latest, 'documentdate'));
+        if (poNumber && docDate) {
+            return `${poNumber} / ${docDate}`;
+        }
+        return 'NA';
+    },
+    getLastPoItemSlNo: (plantRecords) => {
+        if (!plantRecords || plantRecords.length === 0) return 'NA';
+        const latest = getLatestRecord(plantRecords, 'documentdate');
+        if (!latest) return 'NA';
+        const item = String(getValueByFlexibleKey(latest, 'item')).trim();
+        return item || 'NA';
+    },
     getJustification: () => 'INDENTOR TO FILL'
 };
 
@@ -401,42 +878,21 @@ const AnnexureA_Rules = {
         if (!latestRow) return 'No Records Found';
         return formatSapDate(getValueByFlexibleKey(latestRow, 'documentdate')) || 'No Records Found';
     },
-
-    // Column J — LPP: Net Price from latest PO date record
-    //   within 3 years  → numeric price
-    //   beyond 3 years  → "Beyond 3 Years"
-    //   no records      → "No Records Found"
     getLPP: (me2mRecords) => getLPP(me2mRecords),
-
-    // Column K — Budgetary Offer: "Required" only when LPP is beyond 3 years
     getBudgetaryOffer: (me2mRecords) => getBudgetaryOffer(me2mRecords),
-
-    // Column L — Estimated Rate: LPP compounded at 5% per full year since PO date
-    //   Only populated when LPP is valid (within 3 years)
     getEstimatedRate: (me2mRecords) => getEstimatedRate(me2mRecords),
-
     getTotalValue: () => ''
 };
 
-
 // ==========================================
-// 3. PROCESSOR SCHEMAS
+// 3. SCHEMAS
 // ==========================================
 const SCHEMA_TEMPLATES = {
-    // ── ANNEXURE B ──────────────────────────────────────────────────────────────
-    // Row 1: Title (A1:W1)
-    // Row 2: Sub-title (A2:W2)
-    // Row 3: PR info (A3:C3) | Value of indent (D3:W3)
-    // Row 4: Column numbers 1-19 across A-W
-    // Row 5: Header row 1  (spans rows 5-6 for most cols; K5:O5 merged for consumption)
-    // Row 6: Header row 2  (sub-headers for consumption cols K-O and pipeline Q-T)
-    // Data rows: 7, 8, 9 ...
-    // Footer rows: footerStart+0 (note*), +1 (Note label | note1), +2 (| note2), +3 (| note3), +4 (| certified)
     AnnexureB_TopRows: [
-        ['Material Procurement Justification sheet'],                                           // row 1
-        ['Procurement of xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'],                     // row 2
-        ['PRNo.xxxxxx / Date:xxxxxx', '', '', 'Value of  indent in (Rs.): xxxxx/-'],           // row 3
-        [1,2,3,4,5,6,7,8,9,10,11,'','','','',12,13,'',14,'',15,16,17,18,19]                  // row 4 — col numbers
+        ['Material Procurement Justification sheet'],
+        ['Procurement of xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'],
+        ['PRNo.xxxxxx / Date:xxxxxx', '', '', 'Value of  indent in (Rs.): xxxxx/-'],
+        [1,2,3,4,5,6,7,8,9,10,11,'','','','',12,13,'',14,'',15,16,17,18,19]
     ],
     AnnexureB_Headers_Row1: [
         'Sl . No.', 'Material Code', 'Old Material code if any', 'Item Description',
@@ -458,22 +914,12 @@ const SCHEMA_TEMPLATES = {
         ['',    'Indented items will be consumed in next two years'],
         ['',    'Certified that there is no NMI/Surplus items in this list.']
     ],
-
-    // ── ANNEXURE A ──────────────────────────────────────────────────────────────
-    // Row 1: Title green  (A1:M1)
-    // Row 2: ECM desc     (A2:G2 — left aligned, no fill)
-    // Row 3: PR No/Date   (A3:G3)
-    // Row 4: Est Value    (A4:G4)
-    // Row 5: ECM No       (A5:G5)
-    // Row 6+7: Headers    (each col merged A6:A7, B6:B7 … M6:M7 — yellow fill)
-    // Data rows: 8, 9 …
-    // TOTAL row: last row (A merged to L, M has SUM formula)
     AnnexureA_TopRows: [
-        ['ANNEXURE-A : Estimation Sheet'],                                    // row 1
-        ['XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'],                // row 2 — ECM desc placeholder
-        ['PR No. :XXXXXXXXX , Date: XXXXXXX'],                               // row 3
-        ['Estimated Value : Rs. XXXXXXX'],                                   // row 4
-        ['PR ECM No. : XXXXXXXXXXXXXXXXXXXXXXX']                             // row 5
+        ['ANNEXURE-A : Estimation Sheet'],
+        ['XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'],
+        ['PR No. :XXXXXXXXX , Date: XXXXXXX'],
+        ['Estimated Value : Rs. XXXXXXX'],
+        ['PR ECM No. : XXXXXXXXXXXXXXXXXXXXXXX']
     ],
     AnnexureA_Headers: [
         'S No.', 'Material', 'Material Description', 'Population',
@@ -482,9 +928,8 @@ const SCHEMA_TEMPLATES = {
     ]
 };
 
-
 // ==========================================
-// 4. DATA GENERATION FUNCTIONS
+// 4. DATA GENERATION
 // ==========================================
 
 function buildRegistry(rawData) {
@@ -499,13 +944,15 @@ function buildRegistry(rawData) {
     return registry;
 }
 
-function generateAnnexureBWorkbook(masterList, zmmRawData, me2mRawData) {
+function generateAnnexureBWorkbook(masterList, zmmRawData, me2mRawData, me2mPlantRawData) {
     const zmmRegistry = buildRegistry(zmmRawData);
     const me2mRegistry = buildRegistry(me2mRawData);
+    const plantRegistry = buildRegistry(me2mPlantRawData);
 
     const dataRows = masterList.map((materialCode, idx) => {
         const zmmRecords = zmmRegistry.get(materialCode) || [];
         const me2mRecords = me2mRegistry.get(materialCode) || [];
+        const plantRecords = plantRegistry.get(materialCode) || [];
         return [
             AnnexureB_Rules.getSerialNumber(idx + 1),
             AnnexureB_Rules.getMaterialCode(materialCode),
@@ -527,8 +974,8 @@ function generateAnnexureBWorkbook(masterList, zmmRawData, me2mRawData) {
             AnnexureB_Rules.getPipelinePoQty(zmmRecords),
             AnnexureB_Rules.getPipelinePrNoDate(zmmRecords),
             AnnexureB_Rules.getPipelinePrQty(zmmRecords),
-            AnnexureB_Rules.getLastPoNoDate(),
-            AnnexureB_Rules.getLastPoItemSlNo(),
+            AnnexureB_Rules.getLastPoNoDate(plantRecords),
+            AnnexureB_Rules.getLastPoItemSlNo(plantRecords),
             AnnexureB_Rules.getJustification()
         ];
     });
@@ -550,76 +997,136 @@ function generateAnnexureAWorkbook(masterList, zmmRawData, me2mRawData) {
         const zmmRecords = zmmRegistry.get(materialCode) || [];
         const me2mRecords = me2mRegistry.get(materialCode) || [];
         return [
-            AnnexureA_Rules.getSerialNumber(idx + 1),              // A - S No.
-            AnnexureA_Rules.getMaterialCode(materialCode),          // B - Material
-            AnnexureA_Rules.getItemDescription(zmmRecords, me2mRecords), // C - Description
-            AnnexureA_Rules.getPopulation(),                        // D - Population
-            AnnexureA_Rules.getQtyInStock(zmmRecords),             // E - Stock Qty
-            AnnexureA_Rules.getQtyRequested(),                      // F - Qty Requested
-            AnnexureA_Rules.getUnitOfMeasure(me2mRecords),         // G - Unit of Measure
-            AnnexureA_Rules.getLastPoNo(me2mRecords),              // H - Last PO No.
-            AnnexureA_Rules.getLastPoDate(me2mRecords),            // I - Last PO Date
-            AnnexureA_Rules.getLPP(me2mRecords),                   // J - LPP
-            AnnexureA_Rules.getBudgetaryOffer(me2mRecords),         // K - Budgetary Offer (Required if LPP > 3 yrs)
-            AnnexureA_Rules.getEstimatedRate(me2mRecords),          // L - Estimated Rate (5% compound escalation)
-            AnnexureA_Rules.getTotalValue()                         // M - Total Value
+            AnnexureA_Rules.getSerialNumber(idx + 1),
+            AnnexureA_Rules.getMaterialCode(materialCode),
+            AnnexureA_Rules.getItemDescription(zmmRecords, me2mRecords),
+            AnnexureA_Rules.getPopulation(),
+            AnnexureA_Rules.getQtyInStock(zmmRecords),
+            AnnexureA_Rules.getQtyRequested(),
+            AnnexureA_Rules.getUnitOfMeasure(me2mRecords),
+            AnnexureA_Rules.getLastPoNo(me2mRecords),
+            AnnexureA_Rules.getLastPoDate(me2mRecords),
+            AnnexureA_Rules.getLPP(me2mRecords),
+            AnnexureA_Rules.getBudgetaryOffer(me2mRecords),
+            AnnexureA_Rules.getEstimatedRate(me2mRecords),
+            AnnexureA_Rules.getTotalValue()
         ];
     });
 
-    // Header row appears TWICE in the array so ExcelJS places values in row 6 AND row 7
-    // (we merge them per-column later in formatting, so we only need one data row here)
-    const dataStartExcelRow = 8; // rows 1-5 top, row 6-7 header (merged), data from row 8
+    const dataStartExcelRow = 8;
     const totalExcelRow = dataStartExcelRow + dataRows.length;
     const sumFormula = `=SUM(M${dataStartExcelRow}:M${totalExcelRow - 1})`;
 
     return [
-        ...SCHEMA_TEMPLATES.AnnexureA_TopRows,          // rows 1-5
-        SCHEMA_TEMPLATES.AnnexureA_Headers,              // row 6 (merged down to row 7 in formatting)
-        [],                                              // row 7 — blank, merged up into row 6 headers
-        ...dataRows,                                     // rows 8+
-        ['TOTAL', '', '', '', '', '', '', '', '', '', '', '', sumFormula]  // TOTAL row
+        ...SCHEMA_TEMPLATES.AnnexureA_TopRows,
+        SCHEMA_TEMPLATES.AnnexureA_Headers,
+        [],
+        ...dataRows,
+        ['TOTAL', '', '', '', '', '', '', '', '', '', '', '', sumFormula]
     ];
 }
 
-
 // ==========================================
-// 5. EXCEL EXPORT WITH FORMATTING
+// 5. EXCEL EXPORT (single sheet)
 // ==========================================
 
-async function exportFormattedExcel(dataArray, docType) {
+async function exportAnnexure(dataArray, sheetName, fileName) {
+    const workbook = new ExcelJS.Workbook();
     const thin = { style: 'thin' };
     const border = { top: thin, left: thin, bottom: thin, right: thin };
 
-    // ── ANNEXURE B ─────────────────────────────────────────────────────────────
-    if (docType === 'AnnexureB') {
-        const workbook = new ExcelJS.Workbook();
-        const sheet = workbook.addWorksheet('JUSTIFICATION');
-        sheet.addRows(dataArray);
+    const sheet = workbook.addWorksheet(sheetName);
+    sheet.addRows(dataArray);
 
+    if (sheetName === 'ESTIMATION') {
         const totalRows = sheet.rowCount;
-        // Footer starts after data rows. Schema has 5 footer rows.
-        const FOOTER_START = totalRows - 4; // rows: note*, Note+1, note2, note3, certified
+        const DATA_START = 8;
+        const HEADER_ROW = 6;
 
-        // ── Merges ──────────────────────────────────────────────────────────────
-        sheet.mergeCells('A1:W1');   // Title
-        sheet.mergeCells('A2:W2');   // Sub-title
-        sheet.mergeCells('A3:C3');   // PR No / Date   ← schema: A3:C3
-        sheet.mergeCells('D3:W3');   // Value of indent ← schema: D3 onwards
-        // Header row 5: single-col headers span rows 5-6; consumption K5:O5; pipeline merges
+        sheet.mergeCells('A1:M1');
+        sheet.mergeCells('A2:G2');
+        sheet.mergeCells('A3:G3');
+        sheet.mergeCells('A4:G4');
+        sheet.mergeCells('A5:G5');
+        ['A','B','C','D','E','F','G','H','I','J','K','L','M'].forEach(col =>
+            sheet.mergeCells(`${col}6:${col}7`)
+        );
+        sheet.mergeCells(`A${totalRows}:L${totalRows}`);
+
+        const aColWidths = {
+            A:6.0,   B:22.0,  C:50.0,  D:14.0,  E:14.0,  F:14.0,  G:22.0,
+            H:22.0,  I:16.0,  J:22.0,  K:25.0,  L:22.0,  M:28.0
+        };
+        Object.entries(aColWidths).forEach(([col, w]) => { sheet.getColumn(col).width = w; });
+
+        [1,2,3,4,5].forEach(r => { sheet.getRow(r).height = 15.6; });
+        sheet.getRow(totalRows).height = 15.6;
+
+        const greenFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF92D050' } };
+        const yellowFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
+
+        sheet.eachRow((row, rn) => {
+            row.eachCell({ includeEmpty: true }, (cell, cn) => {
+                if (rn === 1) {
+                    cell.font = { bold: true, name: 'Calibri' };
+                    cell.fill = greenFill;
+                    cell.alignment = { horizontal: 'center', vertical: 'center', wrapText: false };
+                    cell.border = border;
+                } else if (rn >= 2 && rn <= 5) {
+                    cell.font = { bold: true, name: 'Calibri' };
+                    cell.alignment = { horizontal: 'left', vertical: 'center', wrapText: false };
+                    cell.border = border;
+                } else if (rn === HEADER_ROW || rn === HEADER_ROW + 1) {
+                    cell.font = { bold: true, name: 'Calibri' };
+                    cell.fill = yellowFill;
+                    cell.alignment = { horizontal: 'center', vertical: 'center', wrapText: true };
+                    cell.border = border;
+                } else if (rn >= DATA_START && rn < totalRows) {
+                    cell.font = { name: 'Calibri' };
+                    cell.alignment = { horizontal: 'left', vertical: 'center', wrapText: false };
+                    cell.border = border;
+                    if (cn === 10 && typeof cell.value === 'number') {
+                        cell.numFmt = '#,##0.00';
+                        cell.alignment = { horizontal: 'right', vertical: 'center', wrapText: false };
+                    }
+                    if (cn === 12 && typeof cell.value === 'number') {
+                        cell.numFmt = '#,##0.00';
+                        cell.alignment = { horizontal: 'right', vertical: 'center', wrapText: false };
+                    }
+                } else if (rn === totalRows) {
+                    cell.font = { bold: true, name: 'Calibri' };
+                    cell.fill = yellowFill;
+                    cell.alignment = { horizontal: 'center', vertical: 'center', wrapText: false };
+                    cell.border = border;
+                    if (cn === 13) {
+                        cell.numFmt = '#,##0.00';
+                        cell.alignment = { horizontal: 'right', vertical: 'center', wrapText: false };
+                    }
+                }
+            });
+        });
+        sheet.getCell(`A${totalRows}`).alignment = { horizontal: 'right', vertical: 'center', wrapText: false };
+
+    } else if (sheetName === 'JUSTIFICATION') {
+        const totalRows = sheet.rowCount;
+        const FOOTER_START = totalRows - 4;
+
+        sheet.mergeCells('A1:W1');
+        sheet.mergeCells('A2:W2');
+        sheet.mergeCells('A3:C3');
+        sheet.mergeCells('D3:W3');
         ['A','B','C','D','E','F','G','H','I','J','P','U','V','W'].forEach(col =>
             sheet.mergeCells(`${col}5:${col}6`)
         );
-        sheet.mergeCells('K5:O5');   // Actual Consumption span
-        sheet.mergeCells('Q5:R5');   // Pipeline PO span
-        sheet.mergeCells('S5:T5');   // Pipeline PR span
-        // Footer merges
-        sheet.mergeCells(`A${FOOTER_START}:W${FOOTER_START}`);           // note*
-        sheet.mergeCells(`B${FOOTER_START+1}:W${FOOTER_START+1}`);       // note 1
-        sheet.mergeCells(`B${FOOTER_START+2}:W${FOOTER_START+2}`);       // note 2
-        sheet.mergeCells(`B${FOOTER_START+3}:W${FOOTER_START+3}`);       // note 3
-        sheet.mergeCells(`B${FOOTER_START+4}:W${FOOTER_START+4}`);       // certified
+        sheet.mergeCells('K5:O5');
+        sheet.mergeCells('Q5:R5');
+        sheet.mergeCells('S5:T5');
+        sheet.mergeCells(`A${FOOTER_START}:W${FOOTER_START}`);
+        sheet.mergeCells(`B${FOOTER_START+1}:W${FOOTER_START+1}`);
+        sheet.mergeCells(`B${FOOTER_START+2}:W${FOOTER_START+2}`);
+        sheet.mergeCells(`B${FOOTER_START+3}:W${FOOTER_START+3}`);
+        sheet.mergeCells(`B${FOOTER_START+4}:W${FOOTER_START+4}`);
 
-        // ── Column widths — wide enough so data never wraps (except \n line breaks) ──
         const bColWidths = {
             A:6.11,  B:20.0,  C:18.0,  D:55.0,  E:14.0,  F:14.0,  G:14.0,
             H:14.0,  I:14.0,  J:13.0,  K:11.0,  L:8.0,   M:12.0,  N:10.0,
@@ -628,14 +1135,12 @@ async function exportFormattedExcel(dataArray, docType) {
         };
         Object.entries(bColWidths).forEach(([col, w]) => { sheet.getColumn(col).width = w; });
 
-        // ── Row heights (from schema) ───────────────────────────────────────────
         sheet.getRow(1).height = 17.4;
         sheet.getRow(2).height = 14.4;
         sheet.getRow(3).height = 25.5;
         sheet.getRow(5).height = 35.25;
         sheet.getRow(6).height = 39.6;
 
-        // ── Cell styling ────────────────────────────────────────────────────────
         sheet.eachRow((row, rn) => {
             row.eachCell({ includeEmpty: true }, (cell, cn) => {
                 if (rn === 1) {
@@ -655,12 +1160,10 @@ async function exportFormattedExcel(dataArray, docType) {
                     cell.alignment = { horizontal: 'center', vertical: 'top', wrapText: false };
                     cell.border = border;
                 } else if (rn === 5 || rn === 6) {
-                    // Header rows — center + wrap OK for headers
                     cell.font = { bold: false, name: 'Calibri' };
                     cell.alignment = { horizontal: 'center', vertical: 'center', wrapText: true };
                     cell.border = border;
                 } else if (rn >= 7 && rn < FOOTER_START) {
-                    // DATA rows — left-aligned, no wrap (except explicit \n)
                     cell.font = { name: 'Calibri' };
                     cell.alignment = { horizontal: 'left', vertical: 'center', wrapText: false };
                     cell.border = border;
@@ -679,118 +1182,25 @@ async function exportFormattedExcel(dataArray, docType) {
             });
         });
 
-        // Pipeline PO/PR columns (Q, S) contain \n-separated entries — allow wrap there only
         for (let rn = 7; rn < FOOTER_START; rn++) {
             ['Q','S'].forEach(col => {
                 sheet.getCell(`${col}${rn}`).alignment = { horizontal: 'left', vertical: 'top', wrapText: true };
             });
         }
-
-        const buffer = await workbook.xlsx.writeBuffer();
-        saveAs(new Blob([buffer]), `AnnexureB_Automated.xlsx`);
-
-    // ── ANNEXURE A ─────────────────────────────────────────────────────────────
-    } else if (docType === 'AnnexureA') {
-        const workbook = new ExcelJS.Workbook();
-        const sheet = workbook.addWorksheet('ESTIMATION');
-        sheet.addRows(dataArray);
-
-        const totalRows = sheet.rowCount;   // last row = TOTAL row
-        const DATA_START = 8;               // rows 1-5 top, 6-7 header, data from 8
-        const HEADER_ROW = 6;
-
-        // ── Merges ──────────────────────────────────────────────────────────────
-        sheet.mergeCells('A1:M1');    // Title — full width
-        // Rows 2-5: merge A:G only (schema shows A2:G2 pattern — left side info)
-        sheet.mergeCells('A2:G2');
-        sheet.mergeCells('A3:G3');
-        sheet.mergeCells('A4:G4');
-        sheet.mergeCells('A5:G5');
-        // Header: each column merges rows 6+7
-        ['A','B','C','D','E','F','G','H','I','J','K','L','M'].forEach(col =>
-            sheet.mergeCells(`${col}6:${col}7`)
-        );
-        // TOTAL row: merge A to L, M has SUM
-        sheet.mergeCells(`A${totalRows}:L${totalRows}`);
-
-        // ── Column widths — wide enough so data never wraps (except \n line breaks) ──
-        const aColWidths = {
-            A:6.0,   B:22.0,  C:50.0,  D:14.0,  E:14.0,  F:14.0,  G:22.0,
-            H:22.0,  I:16.0,  J:22.0,  K:25.0,  L:22.0,  M:28.0
-        };
-        Object.entries(aColWidths).forEach(([col, w]) => { sheet.getColumn(col).width = w; });
-
-        // ── Row heights (from schema) ───────────────────────────────────────────
-        [1,2,3,4,5].forEach(r => { sheet.getRow(r).height = 15.6; });
-        sheet.getRow(totalRows).height = 15.6;
-
-        // ── Cell styling ────────────────────────────────────────────────────────
-        const greenFill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF92D050' } };
-        const yellowFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
-
-        sheet.eachRow((row, rn) => {
-            row.eachCell({ includeEmpty: true }, (cell, cn) => {
-                if (rn === 1) {
-                    // Title: green fill, bold, centered
-                    cell.font = { bold: true, name: 'Calibri' };
-                    cell.fill = greenFill;
-                    cell.alignment = { horizontal: 'center', vertical: 'center', wrapText: false };
-                    cell.border = border;
-                } else if (rn >= 2 && rn <= 5) {
-                    // Info rows: bold, left-aligned, no fill, no wrap
-                    cell.font = { bold: true, name: 'Calibri' };
-                    cell.alignment = { horizontal: 'left', vertical: 'center', wrapText: false };
-                    cell.border = border;
-                } else if (rn === HEADER_ROW || rn === HEADER_ROW + 1) {
-                    // Header rows 6-7: yellow fill, bold, centered, wrapped
-                    cell.font = { bold: true, name: 'Calibri' };
-                    cell.fill = yellowFill;
-                    cell.alignment = { horizontal: 'center', vertical: 'center', wrapText: true };
-                    cell.border = border;
-                } else if (rn >= DATA_START && rn < totalRows) {
-                    // DATA rows — left-aligned, no wrap
-                    cell.font = { name: 'Calibri' };
-                    cell.alignment = { horizontal: 'left', vertical: 'center', wrapText: false };
-                    cell.border = border;
-                    // Col J (10) LPP — right-align numeric
-                    if (cn === 10 && typeof cell.value === 'number') {
-                        cell.numFmt = '#,##0.00';
-                        cell.alignment = { horizontal: 'right', vertical: 'center', wrapText: false };
-                    }
-                    // Col L (12) Estimated Rate — right-align numeric
-                    if (cn === 12 && typeof cell.value === 'number') {
-                        cell.numFmt = '#,##0.00';
-                        cell.alignment = { horizontal: 'right', vertical: 'center', wrapText: false };
-                    }
-                } else if (rn === totalRows) {
-                    // TOTAL row: yellow fill, bold
-                    cell.font = { bold: true, name: 'Calibri' };
-                    cell.fill = yellowFill;
-                    cell.alignment = { horizontal: 'center', vertical: 'center', wrapText: false };
-                    cell.border = border;
-                    if (cn === 13) {
-                        cell.numFmt = '#,##0.00';
-                        cell.alignment = { horizontal: 'right', vertical: 'center', wrapText: false };
-                    }
-                }
-            });
-        });
-
-        // TOTAL label — right-aligned in merged A:L
-        sheet.getCell(`A${totalRows}`).alignment = { horizontal: 'right', vertical: 'center', wrapText: false };
-
-        const buffer = await workbook.xlsx.writeBuffer();
-        saveAs(new Blob([buffer]), `AnnexureA_Automated.xlsx`);
     }
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), fileName);
 }
 
-
 // ==========================================
-// 6. UI AND EVENT LOGIC
+// 6. UI EVENTS & NAVIGATION
 // ==========================================
 let parsedZmmData = [];
 let parsedMe2mData = [];
+let parsedMe2mPlantData = [];
 let sapUniqueMaterials = new Set();
+let scanComplete = false;
 
 function parseExcelToJson(file) {
     return new Promise((resolve, reject) => {
@@ -811,74 +1221,250 @@ function parseExcelToJson(file) {
     });
 }
 
+// ---- Update top nav state ----
+function updateNav(activeStep) {
+    const items = document.querySelectorAll('.top-nav .nav-item[data-step]');
+    items.forEach(item => {
+        const step = parseInt(item.getAttribute('data-step'), 10);
+        item.classList.remove('active', 'completed');
+        if (step === activeStep) {
+            item.classList.add('active');
+        } else if (step < activeStep) {
+            item.classList.add('completed');
+        }
+    });
+}
+
+// ---- File name display ----
+document.getElementById('zmmFile').addEventListener('change', function(e) {
+    const name = this.files[0] ? this.files[0].name : 'No file selected';
+    document.getElementById('zmmFileName').textContent = name;
+    document.getElementById('zmmFileName').classList.toggle('empty', !this.files[0]);
+});
+document.getElementById('me2mFile').addEventListener('change', function(e) {
+    const name = this.files[0] ? this.files[0].name : 'No file selected';
+    document.getElementById('me2mFileName').textContent = name;
+    document.getElementById('me2mFileName').classList.toggle('empty', !this.files[0]);
+});
+document.getElementById('me2mPlantFile').addEventListener('change', function(e) {
+    const name = this.files[0] ? this.files[0].name : 'No file selected';
+    document.getElementById('me2mPlantFileName').textContent = name;
+    document.getElementById('me2mPlantFileName').classList.toggle('empty', !this.files[0]);
+});
+
+// ---- Scan ----
 document.getElementById('scanBtn').addEventListener('click', async () => {
     const zmmFile = document.getElementById('zmmFile').files[0];
     const me2mFile = document.getElementById('me2mFile').files[0];
+    const me2mPlantFile = document.getElementById('me2mPlantFile').files[0];
     const statusDiv = document.getElementById('scanStatus');
+    const btn = document.getElementById('scanBtn');
 
     if (!zmmFile) {
-        statusDiv.innerHTML = "<span style='color:red;'>Error: ZMMMATHIST file is mandatory.</span>";
+        statusDiv.style.display = 'block';
+        statusDiv.className = 'alert error';
+        statusDiv.textContent = 'Error: ZMMMATHIST file is mandatory.';
         return;
     }
 
-    statusDiv.innerText = "Scanning files (This may take a moment)...";
-    document.getElementById('scanBtn').disabled = true;
+    btn.disabled = true;
+    btn.textContent = 'Scanning...';
+    statusDiv.style.display = 'block';
+    statusDiv.className = 'alert info';
+    statusDiv.textContent = 'Reading files, please wait...';
 
     try {
         parsedZmmData = await parseExcelToJson(zmmFile);
         parsedMe2mData = me2mFile ? await parseExcelToJson(me2mFile) : [];
+        parsedMe2mPlantData = me2mPlantFile ? await parseExcelToJson(me2mPlantFile) : [];
 
         sapUniqueMaterials.clear();
-        [...parsedZmmData, ...parsedMe2mData].forEach(row => {
+        [...parsedZmmData, ...parsedMe2mData, ...parsedMe2mPlantData].forEach(row => {
             const mat = String(row['Material'] || '').trim();
             if (mat) sapUniqueMaterials.add(mat);
         });
 
-        const tagsContainer = document.getElementById('materialTags');
-        tagsContainer.innerHTML = Array.from(sapUniqueMaterials).sort()
-            .map(m => `<span class="material-badge">${m}</span>`).join('');
+        const container = document.getElementById('materialTagsContainer');
+        container.innerHTML = Array.from(sapUniqueMaterials).sort()
+            .map(m => `<span class="material-tag">${m}</span>`).join('');
 
-        document.getElementById('scanResult').innerText =
-            `✅ Found ${sapUniqueMaterials.size} unique materials in SAP.`;
-        document.getElementById('step-1').classList.remove('active-step');
-        document.getElementById('step-2').classList.add('active-step');
+        document.getElementById('scanResult').textContent =
+            `Found ${sapUniqueMaterials.size} unique material(s) in SAP.`;
+
+        statusDiv.className = 'alert success';
+        statusDiv.textContent = 'Scan complete. You can now download annexures.';
+
+        scanComplete = true;
+        document.getElementById('genA').disabled = false;
+        document.getElementById('genB').disabled = false;
+        document.getElementById('genStatus').style.display = 'none';
+
+        // Move nav to step 3
+        updateNav(3);
 
     } catch (error) {
         console.error(error);
-        statusDiv.innerHTML = `<span style='color:red;'>Scan failed. Check if file is valid Excel/CSV.</span>`;
-        document.getElementById('scanBtn').disabled = false;
+        statusDiv.className = 'alert error';
+        statusDiv.textContent = 'Scan failed. Please check file format.';
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Scan files and build database';
     }
 });
 
-document.getElementById('generateBtn').addEventListener('click', async () => {
-    const statusDiv = document.getElementById('genStatus');
-    const docType = document.getElementById('docType').value;
-    statusDiv.innerText = `Preparing ${docType}...`;
-
+// ---- Helper to get final material list ----
+function getFinalMasterList() {
     const rawText = document.getElementById('anchorList').value;
     const pastedMaterials = rawText.split(/[\s,]+/).map(s => s.trim()).filter(Boolean);
-    const finalMasterList = Array.from(new Set([...sapUniqueMaterials, ...pastedMaterials])).sort();
+    return Array.from(new Set([...sapUniqueMaterials, ...pastedMaterials])).sort();
+}
 
-    if (finalMasterList.length === 0) {
-        statusDiv.innerHTML = "<span style='color:red;'>Error: No material codes found.</span>";
+// ---- Generate A ----
+document.getElementById('genA').addEventListener('click', async () => {
+    if (!scanComplete) {
+        document.getElementById('genStatus').style.display = 'block';
+        document.getElementById('genStatus').className = 'alert error';
+        document.getElementById('genStatus').textContent = 'Please scan files first.';
         return;
     }
 
+    const statusDiv = document.getElementById('genStatus');
+    const btn = document.getElementById('genA');
+
+    const finalMasterList = getFinalMasterList();
+    if (finalMasterList.length === 0) {
+        statusDiv.style.display = 'block';
+        statusDiv.className = 'alert error';
+        statusDiv.textContent = 'Error: No material codes found.';
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Generating...';
+    statusDiv.style.display = 'block';
+    statusDiv.className = 'alert info';
+    statusDiv.textContent = 'Preparing Annexure A...';
+
     try {
-        let finalDataArray;
-        if (docType === 'AnnexureB') {
-            finalDataArray = generateAnnexureBWorkbook(finalMasterList, parsedZmmData, parsedMe2mData);
-        } else {
-            finalDataArray = generateAnnexureAWorkbook(finalMasterList, parsedZmmData, parsedMe2mData);
-        }
-        await exportFormattedExcel(finalDataArray, docType);
-        statusDiv.innerHTML =
-            `<span style='color:green;'>✅ Success! ${docType} generated for ${finalMasterList.length} items.</span>`;
+        const dataA = generateAnnexureAWorkbook(finalMasterList, parsedZmmData, parsedMe2mData);
+        await exportAnnexure(dataA, 'ESTIMATION', 'AnnexureA_AUTO_PR.xlsx');
+        statusDiv.className = 'alert success';
+        statusDiv.textContent = `Annexure A downloaded for ${finalMasterList.length} items.`;
     } catch (error) {
         console.error(error);
-        statusDiv.innerHTML = `<span style='color:red;'>Error generating file: ${error.message}</span>`;
+        statusDiv.className = 'alert error';
+        statusDiv.textContent = 'Error generating Annexure A.';
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Download Annexure A';
     }
 });
+
+// ---- Generate B ----
+document.getElementById('genB').addEventListener('click', async () => {
+    if (!scanComplete) {
+        document.getElementById('genStatus').style.display = 'block';
+        document.getElementById('genStatus').className = 'alert error';
+        document.getElementById('genStatus').textContent = 'Please scan files first.';
+        return;
+    }
+
+    const statusDiv = document.getElementById('genStatus');
+    const btn = document.getElementById('genB');
+
+    const finalMasterList = getFinalMasterList();
+    if (finalMasterList.length === 0) {
+        statusDiv.style.display = 'block';
+        statusDiv.className = 'alert error';
+        statusDiv.textContent = 'Error: No material codes found.';
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Generating...';
+    statusDiv.style.display = 'block';
+    statusDiv.className = 'alert info';
+    statusDiv.textContent = 'Preparing Annexure B...';
+
+    try {
+        const dataB = generateAnnexureBWorkbook(finalMasterList, parsedZmmData, parsedMe2mData, parsedMe2mPlantData);
+        await exportAnnexure(dataB, 'JUSTIFICATION', 'AnnexureB_AUTO_PR.xlsx');
+        statusDiv.className = 'alert success';
+        statusDiv.textContent = `Annexure B downloaded for ${finalMasterList.length} items.`;
+    } catch (error) {
+        console.error(error);
+        statusDiv.className = 'alert error';
+        statusDiv.textContent = 'Error generating Annexure B.';
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Download Annexure B';
+    }
+});
+
+// ==========================================
+// 7. TOP NAV CLICKS (scroll to sections)
+// ==========================================
+document.getElementById('navUpload').addEventListener('click', () => {
+    document.getElementById('uploadSection').scrollIntoView({ behavior: 'smooth' });
+});
+document.getElementById('navScan').addEventListener('click', () => {
+    document.getElementById('uploadSection').scrollIntoView({ behavior: 'smooth' });
+});
+document.getElementById('navGenerate').addEventListener('click', () => {
+    document.getElementById('generateSection').scrollIntoView({ behavior: 'smooth' });
+});
+
+// ==========================================
+// 8. ACTION LINKS (How to use, Bug, Feedback)
+// ==========================================
+
+// ---- How to use (Google Drive PDF) ----
+// REPLACE THE URL BELOW WITH YOUR ACTUAL GOOGLE DRIVE SHAREABLE PDF LINK
+const HOW_TO_PDF_URL = 'https://drive.google.com/file/d/xxxxxxxxxxxxx/view?usp=sharing';
+
+document.getElementById('navHowTo').addEventListener('click', (e) => {
+    e.preventDefault();
+    window.open(HOW_TO_PDF_URL, '_blank');
+});
+document.getElementById('helpHowTo').addEventListener('click', (e) => {
+    e.preventDefault();
+    window.open(HOW_TO_PDF_URL, '_blank');
+});
+
+// ---- Report a bug ----
+const BUG_EMAIL = 'kulkul@example.com';
+const BUG_SUBJECT = 'AUTO_PR Bug Report';
+
+document.getElementById('navBug').addEventListener('click', (e) => {
+    e.preventDefault();
+    window.location.href = `mailto:${BUG_EMAIL}?subject=${encodeURIComponent(BUG_SUBJECT)}`;
+});
+document.getElementById('helpBug').addEventListener('click', (e) => {
+    e.preventDefault();
+    window.location.href = `mailto:${BUG_EMAIL}?subject=${encodeURIComponent(BUG_SUBJECT)}`;
+});
+
+// ---- Feedback ----
+const FEEDBACK_SUBJECT = 'AUTO_PR Feedback';
+
+document.getElementById('navFeedback').addEventListener('click', (e) => {
+    e.preventDefault();
+    window.location.href = `mailto:${BUG_EMAIL}?subject=${encodeURIComponent(FEEDBACK_SUBJECT)}`;
+});
+document.getElementById('helpFeedback').addEventListener('click', (e) => {
+    e.preventDefault();
+    window.location.href = `mailto:${BUG_EMAIL}?subject=${encodeURIComponent(FEEDBACK_SUBJECT)}`;
+});
+
+// ==========================================
+// 9. INITIAL STATE
+// ==========================================
+document.getElementById('genA').disabled = true;
+document.getElementById('genB').disabled = true;
+document.getElementById('genStatus').style.display = 'block';
+document.getElementById('genStatus').className = 'alert info';
+document.getElementById('genStatus').textContent = 'Please scan SAP files first.';
+updateNav(1);
 </script>
 </body>
 </html>
