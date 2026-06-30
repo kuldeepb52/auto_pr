@@ -3,380 +3,464 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AUTO_PR – SAP Annexure Generator</title>
+    <title>AUTO_PR — SAP Annexure Generator</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz@14..32&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <style>
-        /* ===== RESET & BASE ===== */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        /* ============================================================
+           TOKENS
+           Paper:   #F5F4F0   Surface: #FFFFFF   Ink: #1B1F27
+           Ink-soft #5B6270   Rule:    #DBDAD3   Rule-strong #B8B6AC
+           Accent (ledger teal): #16424D   Accent-soft: #E7EEEE
+           Good: #3F6B3F   Warn/Error: #8C3328
+           ============================================================ */
+        :root {
+            --paper: #F5F4F0;
+            --surface: #FFFFFF;
+            --ink: #1B1F27;
+            --ink-soft: #5B6270;
+            --ink-faint: #8B8F98;
+            --rule: #DBDAD3;
+            --rule-strong: #B8B6AC;
+            --accent: #16424D;
+            --accent-deep: #0D2C34;
+            --accent-soft: #E7EEEE;
+            --good: #3F6B3F;
+            --good-soft: #EBF2EA;
+            --error: #8C3328;
+            --error-soft: #F6EAE7;
         }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { -webkit-font-smoothing: antialiased; }
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f8fafc;
-            color: #1e293b;
-            padding: 2rem 1rem;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
-            align-items: center;
-            min-height: 100vh;
-        }
-        .app-wrapper {
-            max-width: 880px;
-            width: 100%;
-            margin: 0 auto;
-            display: flex;
-            flex-direction: column;
-            flex: 1;
-        }
-
-        /* ===== HEADER ===== */
-        .app-header {
-            margin-bottom: 1.2rem;
-            text-align: center;
-        }
-        .app-header h1 {
-            font-size: 2.2rem;
-            font-weight: 500;
-            letter-spacing: -0.02em;
-            color: #0f172a;
-        }
-        .app-header h1 span {
-            color: #2563eb;
-        }
-        .app-header .subhead {
-            color: #64748b;
-            font-size: 1rem;
-            margin-top: 0.2rem;
-            font-weight: 400;
-        }
-
-        /* ===== WELCOME BANNER ===== */
-        .welcome {
-            background: #f1f5f9;
-            padding: 0.7rem 1.5rem;
-            margin-bottom: 1.8rem;
-            text-align: center;
-            border-left: 4px solid #2563eb;
-            font-size: 0.95rem;
-            color: #1e293b;
-        }
-
-        /* ===== TOP NAV / STEP INDICATOR ===== */
-        .top-nav {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: center;
-            gap: 0.4rem 0.8rem;
-            margin-bottom: 2rem;
-            padding: 0.6rem 1rem;
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-        }
-        .top-nav .nav-item {
-            display: flex;
-            align-items: center;
-            gap: 0.4rem;
-            font-size: 0.85rem;
-            color: #94a3b8;
-            padding: 0.3rem 0.6rem;
-            border: 1px solid transparent;
-            background: transparent;
-            cursor: pointer;
-            font-family: inherit;
-            transition: all 0.15s;
-            text-decoration: none;
-            white-space: nowrap;
-        }
-        .top-nav .nav-item .num {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 22px;
-            height: 22px;
-            border: 1px solid #d1d9e6;
-            border-radius: 50%;
-            font-size: 0.75rem;
-            font-weight: 500;
-            background: #ffffff;
-            color: #94a3b8;
-            transition: all 0.2s;
-            flex-shrink: 0;
-        }
-        .top-nav .nav-item.active .num {
-            border-color: #2563eb;
-            background: #2563eb;
-            color: #ffffff;
-        }
-        .top-nav .nav-item.completed .num {
-            border-color: #2563eb;
-            background: #2563eb;
-            color: #ffffff;
-        }
-        .top-nav .nav-item.active {
-            color: #0f172a;
-            font-weight: 500;
-        }
-        .top-nav .nav-item.completed {
-            color: #2563eb;
-        }
-        .top-nav .nav-item:hover:not(.inactive) {
-            background: #f1f5f9;
-            border-color: #d1d9e6;
-        }
-        .top-nav .nav-item.action-item {
-            color: #475569;
-            font-weight: 400;
-        }
-        .top-nav .nav-item.action-item .num {
-            border-color: #d1d9e6;
-            background: #f8fafc;
-            color: #64748b;
-        }
-        .top-nav .nav-item.action-item:hover .num {
-            border-color: #2563eb;
-            background: #eff6ff;
-            color: #2563eb;
-        }
-        .top-nav .nav-item.action-item:hover {
-            color: #1e293b;
-        }
-        .top-nav .nav-divider {
-            width: 1px;
-            height: 28px;
-            background: #e2e8f0;
-            flex-shrink: 0;
-        }
-        .top-nav .nav-item .label {
-            font-size: 0.82rem;
-        }
-
-        /* ===== SECTIONS ===== */
-        .section {
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            padding: 2rem 2.5rem;
-            margin-bottom: 2rem;
-        }
-        .section-title {
-            font-size: 1.2rem;
-            font-weight: 500;
-            margin-bottom: 0.3rem;
-            color: #0f172a;
-        }
-        .section-desc {
-            color: #64748b;
-            font-size: 0.95rem;
-            margin-bottom: 1.8rem;
+            font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--paper);
+            color: var(--ink);
             line-height: 1.5;
         }
+        .serif { font-family: 'Source Serif 4', Georgia, serif; }
+        .mono  { font-family: 'IBM Plex Mono', 'Courier New', monospace; }
 
-        /* ===== FILE INPUTS ===== */
-        .field-group {
-            margin-bottom: 1.6rem;
+        /* ===== SHELL ===== */
+        .shell {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 0 1.5rem 4rem;
         }
-        .field-group label {
-            display: block;
+
+        /* ===== MASTHEAD ===== */
+        .masthead {
+            border-bottom: 2px solid var(--ink);
+            padding: 2.25rem 0 1.1rem;
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.6rem;
+        }
+        .masthead .title-block .eyebrow {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.72rem;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--ink-soft);
+            margin-bottom: 0.35rem;
+        }
+        .masthead h1 {
+            font-family: 'Source Serif 4', serif;
+            font-weight: 600;
+            font-size: 2.4rem;
+            letter-spacing: -0.01em;
+            color: var(--ink);
+        }
+        .masthead .doc-meta {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.78rem;
+            color: var(--ink-soft);
+            text-align: right;
+            line-height: 1.6;
+        }
+        .masthead .doc-meta .meta-row span:first-child {
+            color: var(--ink-faint);
+            margin-right: 0.4rem;
+        }
+
+        /* ===== LAYOUT: SIDEBAR + MAIN ===== */
+        .layout {
+            display: grid;
+            grid-template-columns: 248px 1fr;
+            gap: 0;
+            border-left: 1px solid var(--rule);
+            border-right: 1px solid var(--rule);
+            background: var(--surface);
+        }
+
+        /* ===== SIDEBAR / WORKFLOW REGISTER ===== */
+        .sidebar {
+            border-right: 1px solid var(--rule);
+            padding: 2rem 1.5rem;
+            position: sticky;
+            top: 0;
+            align-self: start;
+        }
+        .sidebar .register-label {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.7rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--ink-faint);
+            margin-bottom: 1.1rem;
+        }
+        .step-list {
+            list-style: none;
+            position: relative;
+        }
+        .step-list .step {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.85rem;
+            padding: 0;
+            position: relative;
+            cursor: pointer;
+            background: none;
+            border: none;
+            width: 100%;
+            text-align: left;
+            font-family: inherit;
+            padding-bottom: 1.9rem;
+        }
+        .step-list .step:last-child { padding-bottom: 0; }
+        .step-list .step::before {
+            /* connecting rule */
+            content: "";
+            position: absolute;
+            left: 12px;
+            top: 28px;
+            bottom: -2px;
+            width: 1px;
+            background: var(--rule-strong);
+        }
+        .step-list .step:last-child::before { display: none; }
+        .step-list .step .num {
+            flex-shrink: 0;
+            width: 25px;
+            height: 25px;
+            border: 1px solid var(--rule-strong);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.78rem;
+            color: var(--ink-soft);
+            background: var(--surface);
+            transition: all 0.15s;
+            z-index: 1;
+        }
+        .step-list .step .step-text .step-name {
             font-weight: 500;
-            font-size: 0.95rem;
-            color: #1e293b;
-            margin-bottom: 0.3rem;
+            font-size: 0.92rem;
+            color: var(--ink-soft);
+            margin-top: 0.1rem;
         }
-        .field-group label .hint {
-            font-weight: 400;
-            color: #94a3b8;
-            font-size: 0.85rem;
-            margin-left: 0.3rem;
+        .step-list .step .step-text .step-sub {
+            font-size: 0.76rem;
+            color: var(--ink-faint);
+            margin-top: 0.15rem;
         }
-        .field-group .file-row {
+        .step-list .step.active .num {
+            border-color: var(--accent);
+            background: var(--accent);
+            color: #fff;
+        }
+        .step-list .step.active .step-name { color: var(--ink); }
+        .step-list .step.completed .num {
+            border-color: var(--accent);
+            background: var(--accent-soft);
+            color: var(--accent);
+        }
+        .step-list .step.completed .step-name { color: var(--ink); }
+        .step-list .step:hover .step-name { color: var(--ink); }
+
+        .sidebar-divider {
+            border: 0;
+            border-top: 1px solid var(--rule);
+            margin: 1.8rem 0;
+        }
+        .resource-list {
+            list-style: none;
+        }
+        .resource-list li { margin-bottom: 0.55rem; }
+        .resource-list a {
+            font-size: 0.84rem;
+            color: var(--ink-soft);
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: border-color 0.15s, color 0.15s;
+        }
+        .resource-list a:hover {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+
+        /* ===== MAIN COLUMN ===== */
+        .main {
+            padding: 2rem 2.25rem 2.5rem;
+        }
+        .panel {
+            margin-bottom: 2.5rem;
+        }
+        .panel:last-child { margin-bottom: 0; }
+        .panel-head {
+            display: flex;
+            align-items: baseline;
+            gap: 0.7rem;
+            border-bottom: 1px solid var(--ink);
+            padding-bottom: 0.6rem;
+            margin-bottom: 0.4rem;
+        }
+        .panel-head .panel-index {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.8rem;
+            color: var(--accent);
+        }
+        .panel-head h2 {
+            font-family: 'Source Serif 4', serif;
+            font-weight: 600;
+            font-size: 1.3rem;
+            color: var(--ink);
+        }
+        .panel-desc {
+            font-size: 0.88rem;
+            color: var(--ink-soft);
+            margin: 0.6rem 0 1.6rem;
+            max-width: 56ch;
+        }
+
+        /* ===== FIELD GROUPS ===== */
+        .field {
+            border: 1px solid var(--rule);
+            padding: 1.1rem 1.25rem;
+            margin-bottom: 0.9rem;
+            background: var(--surface);
+        }
+        .field-top {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+            margin-bottom: 0.5rem;
+        }
+        .field-label {
+            font-weight: 600;
+            font-size: 0.92rem;
+            color: var(--ink);
+        }
+        .field-required {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.68rem;
+            letter-spacing: 0.07em;
+            text-transform: uppercase;
+            color: var(--error);
+            border: 1px solid var(--error);
+            padding: 0.05rem 0.4rem;
+        }
+        .field-optional {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.68rem;
+            letter-spacing: 0.07em;
+            text-transform: uppercase;
+            color: var(--ink-faint);
+            border: 1px solid var(--rule-strong);
+            padding: 0.05rem 0.4rem;
+        }
+        .field-help {
+            font-size: 0.8rem;
+            color: var(--ink-soft);
+            margin-bottom: 0.7rem;
+            line-height: 1.45;
+        }
+        .file-row {
             display: flex;
             flex-wrap: wrap;
             align-items: center;
-            gap: 0.8rem;
-            margin-top: 0.2rem;
+            gap: 0.75rem;
         }
-        .field-group input[type="file"] {
-            display: inline-block;
-            padding: 0.2rem 0;
-            font-size: 0.9rem;
-            border: none;
-            background: transparent;
-            color: #1e293b;
-        }
-        .field-group .file-name {
-            font-size: 0.9rem;
-            color: #475569;
-            background: #f1f5f9;
-            padding: 0.1rem 0.8rem;
-            border: 1px solid #d1d9e6;
-        }
-        .field-group .file-name.empty {
-            color: #94a3b8;
-            font-style: italic;
-        }
-        .mandatory {
-            color: #b91c1c;
-            font-weight: 600;
-        }
-        .field-group .help {
+        input[type="file"] {
             font-size: 0.85rem;
-            color: #94a3b8;
-            margin-top: 0.2rem;
+            color: var(--ink);
+            max-width: 100%;
         }
+        input[type="file"]::file-selector-button {
+            font-family: 'IBM Plex Sans', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 500;
+            padding: 0.4rem 0.9rem;
+            border: 1px solid var(--ink);
+            background: var(--surface);
+            color: var(--ink);
+            cursor: pointer;
+            margin-right: 0.75rem;
+            transition: background 0.15s;
+        }
+        input[type="file"]::file-selector-button:hover {
+            background: var(--ink);
+            color: var(--surface);
+        }
+        .file-name {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.78rem;
+            color: var(--ink);
+            background: var(--paper);
+            padding: 0.2rem 0.6rem;
+            border: 1px solid var(--rule);
+        }
+        .file-name.empty { color: var(--ink-faint); font-style: normal; }
 
         /* ===== BUTTONS ===== */
         .btn {
-            display: inline-block;
-            padding: 0.5rem 1.6rem;
-            border: 1px solid #d1d9e6;
-            background: #ffffff;
-            color: #1e293b;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.65rem 1.5rem;
+            border: 1px solid var(--ink);
+            background: var(--surface);
+            color: var(--ink);
+            font-family: 'IBM Plex Sans', sans-serif;
             font-weight: 500;
-            font-size: 0.95rem;
+            font-size: 0.88rem;
             cursor: pointer;
-            transition: background 0.15s, border-color 0.15s;
+            transition: background 0.15s, color 0.15s, border-color 0.15s;
             text-decoration: none;
-            font-family: inherit;
         }
         .btn:hover:not(:disabled) {
-            background: #f1f5f9;
-            border-color: #94a3b8;
+            background: var(--ink);
+            color: var(--surface);
         }
         .btn-primary {
-            background: #ffffff;
-            border-color: #2563eb;
-            color: #2563eb;
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
         }
         .btn-primary:hover:not(:disabled) {
-            background: #eff6ff;
-            border-color: #1d4ed8;
-        }
-        .btn-success {
-            background: #ffffff;
-            border-color: #2563eb;
-            color: #2563eb;
-        }
-        .btn-success:hover:not(:disabled) {
-            background: #eff6ff;
-            border-color: #1d4ed8;
+            background: var(--accent-deep);
+            border-color: var(--accent-deep);
+            color: #fff;
         }
         .btn:disabled {
-            opacity: 0.5;
+            opacity: 0.4;
             cursor: default;
+            background: var(--surface);
+            color: var(--ink-soft);
+            border-color: var(--rule-strong);
         }
         .btn .spinner {
             display: inline-block;
-            width: 16px;
-            height: 16px;
-            border: 2px solid #94a3b8;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255,255,255,0.5);
             border-top-color: transparent;
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
-            vertical-align: middle;
-            margin-right: 0.5rem;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
-
         .action-row {
             display: flex;
             flex-wrap: wrap;
-            gap: 1rem;
-            margin-top: 1.2rem;
+            gap: 0.9rem;
+            margin-top: 1.4rem;
         }
 
-        /* ===== STATUS MESSAGES ===== */
+        /* ===== ALERTS ===== */
         .alert {
-            margin-top: 1.2rem;
-            padding: 0.7rem 1rem;
-            border-left: 4px solid #94a3b8;
-            background: #f8fafc;
-            font-size: 0.95rem;
+            margin-top: 1.1rem;
+            padding: 0.65rem 0.95rem;
+            border-left: 3px solid var(--rule-strong);
+            background: var(--paper);
+            font-size: 0.86rem;
             display: none;
         }
-        .alert.error {
-            border-left-color: #b91c1c;
-            background: #fef2f2;
-            color: #7f1d1d;
-        }
-        .alert.success {
-            border-left-color: #2563eb;
-            background: #eff6ff;
-            color: #1e3a8a;
-        }
-        .alert.info {
-            border-left-color: #2563eb;
-            background: #f1f5f9;
-            color: #1e293b;
-        }
+        .alert.error { border-left-color: var(--error); background: var(--error-soft); color: var(--error); }
+        .alert.success { border-left-color: var(--good); background: var(--good-soft); color: var(--good); }
+        .alert.info { border-left-color: var(--accent); background: var(--accent-soft); color: var(--accent-deep); }
 
-        /* ===== MATERIAL TAGS ===== */
+        /* ===== MATERIALS REGISTER ===== */
+        .register-box {
+            border: 1px solid var(--rule);
+            background: var(--paper);
+            margin-bottom: 1.8rem;
+        }
+        .register-box-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.7rem 1rem;
+            border-bottom: 1px solid var(--rule);
+            font-size: 0.82rem;
+        }
+        .register-box-head .count {
+            font-family: 'IBM Plex Mono', monospace;
+            font-weight: 500;
+            color: var(--accent);
+        }
         .material-tags {
             display: flex;
             flex-wrap: wrap;
             gap: 0.4rem;
             max-height: 150px;
             overflow-y: auto;
-            padding: 0.5rem 0;
-            margin: 0.4rem 0 0.2rem;
+            padding: 0.9rem 1rem;
         }
         .material-tag {
-            background: #f1f5f9;
-            color: #1e293b;
-            padding: 0.1rem 0.8rem;
-            border: 1px solid #d1d9e6;
-            font-size: 0.85rem;
-            font-weight: 400;
+            font-family: 'IBM Plex Mono', monospace;
+            background: var(--surface);
+            color: var(--ink);
+            padding: 0.18rem 0.6rem;
+            border: 1px solid var(--rule-strong);
+            font-size: 0.78rem;
         }
 
-        /* ===== TEXTAREA & SELECT ===== */
-        textarea, select, input[type="number"] {
-            padding: 0.6rem 0.8rem;
-            border: 1px solid #d1d9e6;
-            font-family: 'Inter', sans-serif;
+        /* ===== FORM CONTROLS ===== */
+        .form-group { margin-bottom: 1.6rem; }
+        .form-group label {
+            display: block;
+            font-weight: 600;
             font-size: 0.9rem;
-            background: #ffffff;
-            transition: border-color 0.15s;
+            color: var(--ink);
+            margin-bottom: 0.3rem;
+        }
+        .form-group .help-text {
+            display: block;
+            font-weight: 400;
+            font-size: 0.8rem;
+            color: var(--ink-soft);
+            margin-top: 0.35rem;
+            line-height: 1.45;
+        }
+        textarea, select, input[type="number"] {
+            padding: 0.55rem 0.75rem;
+            border: 1px solid var(--rule-strong);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.85rem;
+            background: var(--surface);
+            color: var(--ink);
         }
         textarea {
             resize: vertical;
-            font-family: 'Inter', monospace;
             width: 100%;
         }
-        select {
-            appearance: auto;
-            cursor: pointer;
-            width: auto;
-        }
-        input[type="number"] {
-            width: 100px;
-        }
+        select { cursor: pointer; width: auto; font-family: 'IBM Plex Sans', sans-serif; }
+        input[type="number"] { width: 110px; font-family: 'IBM Plex Sans', sans-serif; }
         textarea:focus, select:focus, input[type="number"]:focus {
-            outline: none;
-            border-color: #2563eb;
-        }
-        .form-group {
-            margin-bottom: 1.6rem;
-        }
-        .form-group label {
-            display: block;
-            font-weight: 500;
-            margin-bottom: 0.3rem;
-            color: #1e293b;
-        }
-        .form-group .help-text {
-            font-weight: 400;
-            color: #94a3b8;
-            font-size: 0.85rem;
-            display: block;
-            margin-top: 0.2rem;
+            outline: 2px solid var(--accent);
+            outline-offset: 1px;
+            border-color: var(--accent);
         }
         .inline-controls {
             display: flex;
@@ -384,267 +468,234 @@
             align-items: center;
             gap: 0.8rem;
         }
-        .inline-controls select {
-            flex: 0 0 auto;
-        }
 
-        /* ===== DIVIDER ===== */
-        .divider {
-            border: 0;
-            border-top: 1px solid #e2e8f0;
-            margin: 2rem 0 1.6rem;
-        }
-
-        /* ===== HELP / GUIDE (condensed) ===== */
-        .help-section {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            padding: 1.2rem 2rem;
-            margin-bottom: 2rem;
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: space-between;
-            gap: 0.8rem;
-        }
-        .help-section .help-text {
-            font-size: 0.95rem;
-            color: #475569;
-        }
-        .help-section .help-text strong {
-            color: #0f172a;
-        }
-        .help-section .help-actions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.8rem;
-        }
-        .help-section .help-actions .btn-sm {
-            padding: 0.3rem 1.2rem;
-            font-size: 0.85rem;
-            border: 1px solid #d1d9e6;
-            background: #ffffff;
-            color: #1e293b;
-            cursor: pointer;
-            transition: background 0.15s, border-color 0.15s;
-            text-decoration: none;
-            font-family: inherit;
-        }
-        .help-section .help-actions .btn-sm:hover {
-            background: #f1f5f9;
-            border-color: #94a3b8;
-        }
-        .help-section .help-actions .btn-sm.primary {
-            border-color: #2563eb;
-            color: #2563eb;
-        }
-        .help-section .help-actions .btn-sm.primary:hover {
-            background: #eff6ff;
-            border-color: #1d4ed8;
-        }
+        hr.divider { border: 0; border-top: 1px solid var(--rule); margin: 1.8rem 0 1.6rem; }
 
         /* ===== FOOTER ===== */
-        footer {
+        .colophon {
+            border-top: 2px solid var(--ink);
             margin-top: 1.5rem;
-            padding-top: 1.5rem;
-            border-top: 1px solid #e2e8f0;
-            text-align: center;
-            font-size: 0.9rem;
-            color: #94a3b8;
-        }
-        footer .credit {
-            color: #475569;
-        }
-        footer .contact {
-            color: #475569;
-            margin-top: 0.2rem;
+            padding-top: 1.1rem;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--ink-faint);
         }
 
         /* ===== RESPONSIVE ===== */
+        @media (max-width: 880px) {
+            .layout { grid-template-columns: 1fr; }
+            .sidebar {
+                position: static;
+                border-right: none;
+                border-bottom: 1px solid var(--rule);
+                padding: 1.5rem;
+            }
+            .step-list { display: flex; flex-wrap: wrap; gap: 0 1.5rem; }
+            .step-list .step { width: auto; padding-bottom: 0.6rem; }
+            .step-list .step::before { display: none; }
+            .sidebar-divider { margin: 1.2rem 0; }
+            .resource-list { display: flex; gap: 1.2rem; flex-wrap: wrap; }
+        }
         @media (max-width: 640px) {
-            .app-header h1 { font-size: 1.8rem; }
-            .section { padding: 1.5rem; }
-            .field-group .file-row { flex-direction: column; align-items: stretch; }
-            .btn { width: 100%; justify-content: center; text-align: center; }
+            .masthead { flex-direction: column; align-items: flex-start; }
+            .masthead .doc-meta { text-align: left; }
+            .masthead h1 { font-size: 1.9rem; }
+            .main { padding: 1.5rem 1.25rem 2rem; }
+            .field-row, .file-row { flex-direction: column; align-items: stretch; }
+            .btn { width: 100%; }
             .action-row { flex-direction: column; }
-            .top-nav { gap: 0.3rem 0.6rem; padding: 0.5rem 0.8rem; }
-            .top-nav .nav-item { font-size: 0.75rem; padding: 0.2rem 0.4rem; }
-            .top-nav .nav-item .num { width: 20px; height: 20px; font-size: 0.7rem; }
-            .top-nav .nav-item .label { font-size: 0.7rem; }
-            .top-nav .nav-divider { height: 20px; }
-            .help-section { flex-direction: column; align-items: stretch; text-align: center; }
-            .help-section .help-actions { justify-content: center; }
             .inline-controls { flex-direction: column; align-items: stretch; }
             .inline-controls select, .inline-controls input[type="number"] { width: 100%; }
-        }
-        @media (max-width: 480px) {
-            .top-nav .nav-item .label { display: none; }
-            .top-nav .nav-item { padding: 0.2rem 0.4rem; }
         }
     </style>
 </head>
 <body>
 
-<div class="app-wrapper">
+<div class="shell">
 
-    <!-- HEADER -->
-    <div class="app-header">
-        <h1><span>AUTO</span>_PR</h1>
-        <div class="subhead">SAP Annexure Generator – download A or B separately</div>
+    <!-- MASTHEAD -->
+    <div class="masthead">
+        <div class="title-block">
+            <div class="eyebrow">Procurement — Annexure Workbench</div>
+            <h1>AUTO_PR</h1>
+        </div>
+        <div class="doc-meta">
+            <div class="meta-row"><span>Output</span>Annexure A &amp; Annexure B (.xlsx)</div>
+            <div class="meta-row"><span>Source</span>SAP exports (ZMMMATHIST, ME2M)</div>
+        </div>
     </div>
 
-    <!-- WELCOME -->
-    <div class="welcome">
-        Welcome to AUTO_PR – streamline your SAP annexure generation.
-    </div>
+    <div class="layout">
 
-    <!-- TOP NAVIGATION: Steps + Actions -->
-    <div class="top-nav" id="topNav">
-        <!-- Step 1: Upload -->
-        <button class="nav-item active" data-step="1" id="navUpload">
-            <span class="num">1</span>
-            <span class="label">Upload</span>
-        </button>
-        <span class="nav-divider"></span>
-        <!-- Step 2: Scan -->
-        <button class="nav-item" data-step="2" id="navScan">
-            <span class="num">2</span>
-            <span class="label">Scan</span>
-        </button>
-        <span class="nav-divider"></span>
-        <!-- Step 3: Generate -->
-        <button class="nav-item" data-step="3" id="navGenerate">
-            <span class="num">3</span>
-            <span class="label">Generate</span>
-        </button>
-        <span class="nav-divider"></span>
-        <!-- Action 4: How to use -->
-        <a class="nav-item action-item" href="#" id="navHowTo" target="_blank">
-            <span class="num">4</span>
-            <span class="label">How to use</span>
-        </a>
-        <span class="nav-divider"></span>
-        <!-- Action 5: Report a bug -->
-        <a class="nav-item action-item" href="#" id="navBug">
-            <span class="num">5</span>
-            <span class="label">Report a bug</span>
-        </a>
-        <span class="nav-divider"></span>
-        <!-- Action 6: Feedback -->
-        <a class="nav-item action-item" href="#" id="navFeedback">
-            <span class="num">6</span>
-            <span class="label">Feedback</span>
-        </a>
-    </div>
+        <!-- SIDEBAR: WORKFLOW REGISTER -->
+        <aside class="sidebar">
+            <div class="register-label">Workflow</div>
+            <ul class="step-list" id="topNav">
+                <li>
+                    <button class="step active" data-step="1" id="navUpload" type="button">
+                        <span class="num">1</span>
+                        <span class="step-text">
+                            <div class="step-name">Upload</div>
+                            <div class="step-sub">Add SAP export files</div>
+                        </span>
+                    </button>
+                </li>
+                <li>
+                    <button class="step" data-step="2" id="navScan" type="button">
+                        <span class="num">2</span>
+                        <span class="step-text">
+                            <div class="step-name">Scan</div>
+                            <div class="step-sub">Build the material database</div>
+                        </span>
+                    </button>
+                </li>
+                <li>
+                    <button class="step" data-step="3" id="navGenerate" type="button">
+                        <span class="num">3</span>
+                        <span class="step-text">
+                            <div class="step-name">Generate</div>
+                            <div class="step-sub">Download Annexure A or B</div>
+                        </span>
+                    </button>
+                </li>
+            </ul>
 
-    <!-- SECTION 1: UPLOAD -->
-    <div class="section" id="uploadSection">
-        <div class="section-title">Upload SAP data</div>
-        <div class="section-desc">Provide your raw SAP export files to build the material database.</div>
+            <hr class="sidebar-divider" />
 
-        <!-- ZMM -->
-        <div class="field-group">
-            <label>ZMMMATHIST <span class="mandatory">*</span> <span class="hint">(material master with consumption)</span></label>
-            <div class="file-row">
-                <input type="file" id="zmmFile" accept=".xlsx,.xls,.csv" />
-                <span class="file-name empty" id="zmmFileName">No file selected</span>
+            <div class="register-label">Resources</div>
+            <ul class="resource-list">
+                <li><a href="#" id="navHowTo" target="_blank">How to use this tool</a></li>
+                <li><a href="#" id="navBug">Report a bug</a></li>
+                <li><a href="#" id="navFeedback">Send feedback</a></li>
+            </ul>
+        </aside>
+
+        <!-- MAIN COLUMN -->
+        <main class="main">
+
+            <!-- PANEL 1: UPLOAD -->
+            <section class="panel" id="uploadSection">
+                <div class="panel-head">
+                    <span class="panel-index mono">01</span>
+                    <h2>Upload SAP data</h2>
+                </div>
+                <p class="panel-desc">Provide the raw SAP export files used to build the material database for this indent.</p>
+
+                <!-- ZMM -->
+                <div class="field">
+                    <div class="field-top">
+                        <span class="field-label">ZMMMATHIST</span>
+                        <span class="field-required">Required</span>
+                    </div>
+                    <div class="field-help">Material master with consumption — descriptions, stock, consumption history, and pipeline PO/PR detail.</div>
+                    <div class="file-row">
+                        <input type="file" id="zmmFile" accept=".xlsx,.xls,.csv" />
+                        <span class="file-name empty" id="zmmFileName">No file selected</span>
+                    </div>
+                </div>
+
+                <!-- ME2M -->
+                <div class="field">
+                    <div class="field-top">
+                        <span class="field-label">ME2M</span>
+                        <span class="field-optional">Optional · feeds Annexure A</span>
+                    </div>
+                    <div class="field-help">Purchase order history, net prices, and units used in the estimation sheet.</div>
+                    <div class="file-row">
+                        <input type="file" id="me2mFile" accept=".xlsx,.xls,.csv" />
+                        <span class="file-name empty" id="me2mFileName">No file selected</span>
+                    </div>
+                </div>
+
+                <!-- ME2M Plant -->
+                <div class="field">
+                    <div class="field-top">
+                        <span class="field-label">ME2M (Plant Code)</span>
+                        <span class="field-optional">Optional · feeds Annexure B, columns U–V</span>
+                    </div>
+                    <div class="field-help">When provided, populates the last PO number, date, and item number in Annexure B.</div>
+                    <div class="file-row">
+                        <input type="file" id="me2mPlantFile" accept=".xlsx,.xls,.csv" />
+                        <span class="file-name empty" id="me2mPlantFileName">No file selected</span>
+                    </div>
+                </div>
+
+                <button id="scanBtn" class="btn btn-primary">Scan files and build database</button>
+                <div id="scanStatus" class="alert info" style="display:none;">
+                    <span>Ready to scan</span>
+                </div>
+            </section>
+
+            <!-- PANEL 2: GENERATE -->
+            <section class="panel" id="generateSection">
+                <div class="panel-head">
+                    <span class="panel-index mono">02</span>
+                    <h2>Generate annexure</h2>
+                </div>
+                <p class="panel-desc">Once the scan is complete, review the material register, set the optional defaults below, and download the annexure you need.</p>
+
+                <div class="register-box">
+                    <div class="register-box-head">
+                        <span id="scanResult">No scan run yet.</span>
+                    </div>
+                    <div id="materialTagsContainer" class="material-tags"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="anchorList">Additional material codes</label>
+                    <textarea id="anchorList" rows="3" placeholder="One per line or comma-separated, e.g.&#10;M123456789&#10;M987654321"></textarea>
+                    <span class="help-text">These are merged with the materials found in SAP. Leave empty to use only scanned materials.</span>
+                </div>
+
+                <hr class="divider" />
+
+                <!-- Failure Rate selector -->
+                <div class="form-group">
+                    <label for="failureRate">Failure rate — Annexure B, column P</label>
+                    <div class="inline-controls">
+                        <select id="failureRate">
+                            <option value="Custom">Custom (leave blank)</option>
+                            <option value="Normal">Normal</option>
+                            <option value="Frequent">Frequent</option>
+                        </select>
+                    </div>
+                    <span class="help-text">Choose how to populate the "Failure rate" column for every item in this run.</span>
+                </div>
+
+                <!-- Normal Life of item selector -->
+                <div class="form-group">
+                    <label for="normalLifeMode">Normal life of item — Annexure B, column J</label>
+                    <div class="inline-controls">
+                        <select id="normalLifeMode">
+                            <option value="Custom">Custom (leave blank)</option>
+                            <option value="Enter">Enter value</option>
+                        </select>
+                        <input type="number" id="normalLifeValue" placeholder="Years" disabled />
+                    </div>
+                    <span class="help-text">Fill the "Normal Life" column with a fixed number of years, or leave it blank for manual entry later.</span>
+                </div>
+
+                <div class="action-row">
+                    <button id="genA" class="btn btn-primary" disabled>Download Annexure A</button>
+                    <button id="genB" class="btn btn-primary" disabled>Download Annexure B</button>
+                </div>
+                <div id="genStatus" class="alert info" style="display:none;">
+                    <span>Awaiting scan completion</span>
+                </div>
+            </section>
+
+            <!-- COLOPHON -->
+            <div class="colophon">
+                <span>Designed and developed by Kuldeep Kumar</span>
+                <span>Contact: +91-12345-67890</span>
             </div>
-            <div class="help">Contains descriptions, stock, consumption history, and pipeline PO/PR details.</div>
-        </div>
 
-        <!-- ME2M -->
-        <div class="field-group">
-            <label>ME2M <span class="hint">(optional, used for Annexure A)</span></label>
-            <div class="file-row">
-                <input type="file" id="me2mFile" accept=".xlsx,.xls,.csv" />
-                <span class="file-name empty" id="me2mFileName">No file selected</span>
-            </div>
-            <div class="help">Provides PO history, net prices, and units for estimation sheets.</div>
-        </div>
-
-        <!-- ME2M Plant -->
-        <div class="field-group">
-            <label>ME2M (Plant Code) <span class="hint">(optional, used for Annexure B columns U &amp; V)</span></label>
-            <div class="file-row">
-                <input type="file" id="me2mPlantFile" accept=".xlsx,.xls,.csv" />
-                <span class="file-name empty" id="me2mPlantFileName">No file selected</span>
-            </div>
-            <div class="help">If provided, populates last PO number/date and item number in Annexure B.</div>
-        </div>
-
-        <button id="scanBtn" class="btn btn-primary">Scan files and build database</button>
-        <div id="scanStatus" class="alert info" style="display:none;">
-            <span>Ready to scan</span>
-        </div>
+        </main>
     </div>
-
-    <!-- SECTION 2: GENERATE -->
-    <div class="section" id="generateSection">
-        <div class="section-title">Generate annexure</div>
-        <div class="section-desc">After scanning, choose the annexure you need.</div>
-
-        <div id="scanResult" style="font-weight:500;color:#2563eb;margin-bottom:0.5rem;"></div>
-        <div id="materialTagsContainer" class="material-tags"></div>
-
-        <hr class="divider" />
-
-        <div class="form-group">
-            <label for="anchorList">Additional material codes</label>
-            <textarea id="anchorList" rows="3" placeholder="One per line or comma-separated, e.g.&#10;M123456789&#10;M987654321"></textarea>
-            <span class="help-text">These will be merged with the materials found in SAP. Leave empty to use only scanned materials.</span>
-        </div>
-
-        <!-- Failure Rate selector -->
-        <div class="form-group">
-            <label for="failureRate">Failure rate (Annexure B, column P)</label>
-            <div class="inline-controls">
-                <select id="failureRate">
-                    <option value="Custom">Custom (leave blank)</option>
-                    <option value="Normal">Normal</option>
-                    <option value="Frequent">Frequent</option>
-                </select>
-            </div>
-            <span class="help-text">Choose how to populate the "Failure rate" column for all items.</span>
-        </div>
-
-        <!-- Normal Life of item selector -->
-        <div class="form-group">
-            <label for="normalLifeMode">Normal life of item (Annexure B, column J)</label>
-            <div class="inline-controls">
-                <select id="normalLifeMode">
-                    <option value="Custom">Custom (leave blank)</option>
-                    <option value="Enter">Enter value</option>
-                </select>
-                <input type="number" id="normalLifeValue" placeholder="Years" disabled />
-            </div>
-            <span class="help-text">Choose whether to fill the "Normal Life" column with a specific number of years, or leave it blank.</span>
-        </div>
-
-        <div class="action-row">
-            <button id="genA" class="btn btn-success" disabled>Download Annexure A</button>
-            <button id="genB" class="btn btn-success" disabled>Download Annexure B</button>
-        </div>
-        <div id="genStatus" class="alert info" style="display:none;">
-            <span>Awaiting scan completion</span>
-        </div>
-    </div>
-
-    <!-- CONDENSED HELP / QUICK ACTIONS -->
-    <div class="help-section">
-        <span class="help-text"><strong>How to use AUTO_PR:</strong> Upload &rarr; Scan &rarr; Generate. Simple as that.</span>
-        <span class="help-actions">
-            <a href="#" class="btn-sm primary" id="helpHowTo">How to use (PDF)</a>
-            <a href="#" class="btn-sm" id="helpBug">Report a bug</a>
-            <a href="#" class="btn-sm" id="helpFeedback">Feedback</a>
-        </span>
-    </div>
-
-    <!-- FOOTER -->
-    <footer>
-        <div class="credit">Designed and Developed by Kuldeep Kumar</div>
-        <div class="contact">Contact: +91-12345-67890</div>
-    </footer>
-
 </div>
 
 <script>
@@ -1295,7 +1346,7 @@ function parseExcelToJson(file) {
 
 // ---- Update top nav state ----
 function updateNav(activeStep) {
-    const items = document.querySelectorAll('.top-nav .nav-item[data-step]');
+    const items = document.querySelectorAll('.top-nav .nav-item[data-step], #topNav .step[data-step]');
     items.forEach(item => {
         const step = parseInt(item.getAttribute('data-step'), 10);
         item.classList.remove('active', 'completed');
@@ -1523,10 +1574,6 @@ document.getElementById('navHowTo').addEventListener('click', (e) => {
     e.preventDefault();
     window.open(HOW_TO_PDF_URL, '_blank');
 });
-document.getElementById('helpHowTo').addEventListener('click', (e) => {
-    e.preventDefault();
-    window.open(HOW_TO_PDF_URL, '_blank');
-});
 
 // ---- Report a bug ----
 const BUG_EMAIL = 'kulkul@example.com';
@@ -1536,19 +1583,11 @@ document.getElementById('navBug').addEventListener('click', (e) => {
     e.preventDefault();
     window.location.href = `mailto:${BUG_EMAIL}?subject=${encodeURIComponent(BUG_SUBJECT)}`;
 });
-document.getElementById('helpBug').addEventListener('click', (e) => {
-    e.preventDefault();
-    window.location.href = `mailto:${BUG_EMAIL}?subject=${encodeURIComponent(BUG_SUBJECT)}`;
-});
 
 // ---- Feedback ----
 const FEEDBACK_SUBJECT = 'AUTO_PR Feedback';
 
 document.getElementById('navFeedback').addEventListener('click', (e) => {
-    e.preventDefault();
-    window.location.href = `mailto:${BUG_EMAIL}?subject=${encodeURIComponent(FEEDBACK_SUBJECT)}`;
-});
-document.getElementById('helpFeedback').addEventListener('click', (e) => {
     e.preventDefault();
     window.location.href = `mailto:${BUG_EMAIL}?subject=${encodeURIComponent(FEEDBACK_SUBJECT)}`;
 });
