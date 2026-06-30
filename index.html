@@ -858,7 +858,18 @@ const AnnexureB_Rules = {
         if (!zmmRecords || zmmRecords.length === 0) return 0;
         return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'stock'));
     },
-    getSafetyStock: () => '',
+    // ===== UPDATED: Safety Stock from ZMMMATHIST Doc.Type = "SafeSt" =====
+    getSafetyStock: (zmmRecords) => {
+        if (!zmmRecords || zmmRecords.length === 0) return '';
+        for (let row of zmmRecords) {
+            const docType = String(getValueByFlexibleKey(row, 'doc.type')).trim().toLowerCase();
+            if (docType.includes('safest')) {
+                const qty = parseSapNumeric(getValueByFlexibleKey(row, 'quantity'));
+                return qty; // numeric value, or empty string if not found
+            }
+        }
+        return '';
+    },
     getMandatorySpareQty: () => '',
     getNormalLife: () => {
         if (normalLifeMode === 'Enter' && normalLifeValue) {
@@ -1074,15 +1085,15 @@ function generateAnnexureBWorkbook(masterList, zmmRawData, me2mRawData, me2mPlan
             AnnexureB_Rules.getPopulation(),
             AnnexureB_Rules.getQtyProposed(),
             AnnexureB_Rules.getQtyInStock(zmmRecords),
-            AnnexureB_Rules.getSafetyStock(),
+            AnnexureB_Rules.getSafetyStock(zmmRecords),        // column H
             AnnexureB_Rules.getMandatorySpareQty(),
-            AnnexureB_Rules.getNormalLife(),          // column J
+            AnnexureB_Rules.getNormalLife(),                  // column J
             AnnexureB_Rules.getConsumptionYr4(zmmRecords),
             AnnexureB_Rules.getConsumptionYr3(zmmRecords),
             AnnexureB_Rules.getConsumptionYr2(zmmRecords),
             AnnexureB_Rules.getConsumptionPrevYr(zmmRecords),
             AnnexureB_Rules.getConsumptionCurrYr(zmmRecords),
-            AnnexureB_Rules.getFailureRate(),         // column P
+            AnnexureB_Rules.getFailureRate(),                 // column P
             AnnexureB_Rules.getPipelinePoNoDate(zmmRecords),
             AnnexureB_Rules.getPipelinePoQty(zmmRecords),
             AnnexureB_Rules.getPipelinePrNoDate(zmmRecords),
