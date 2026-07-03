@@ -47,7 +47,7 @@
 
         /* ===== SHELL ===== */
         .shell {
-            max-width: 1180px;
+            max-width: 1480px;
             margin: 0 auto;
             padding: 0 1.5rem 4rem;
         }
@@ -57,20 +57,11 @@
             border-bottom: 2px solid var(--ink);
             padding: 2.25rem 0 1.1rem;
             display: flex;
-            align-items: flex-end;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 0.6rem;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
         }
-        .masthead .title-block .eyebrow {
-            font-family: 'IBM Plex Mono', monospace;
-            font-size: 0.72rem;
-            letter-spacing: 0.14em;
-            text-transform: uppercase;
-            color: var(--ink-soft);
-            margin-bottom: 0.35rem;
-        }
-        .masthead h1 {
+        .masthead .title-block h1 {
             font-family: 'Source Serif 4', serif;
             font-weight: 600;
             font-size: 2.4rem;
@@ -78,21 +69,13 @@
             color: var(--ink);
         }
         .masthead .doc-meta {
-            font-family: 'IBM Plex Mono', monospace;
-            font-size: 0.78rem;
-            color: var(--ink-soft);
-            text-align: right;
-            line-height: 1.6;
-        }
-        .masthead .doc-meta .meta-row span:first-child {
-            color: var(--ink-faint);
-            margin-right: 0.4rem;
+            display: none;
         }
 
-        /* ===== LAYOUT: SIDEBAR + MAIN ===== */
+        /* ===== LAYOUT: SIDEBAR + MAIN + LOG ===== */
         .layout {
             display: grid;
-            grid-template-columns: 248px 1fr;
+            grid-template-columns: 220px 1fr 320px;
             gap: 0;
             border-left: 1px solid var(--rule);
             border-right: 1px solid var(--rule);
@@ -102,7 +85,7 @@
         /* ===== SIDEBAR / WORKFLOW REGISTER ===== */
         .sidebar {
             border-right: 1px solid var(--rule);
-            padding: 2rem 1.5rem;
+            padding: 2rem 1.25rem;
             position: sticky;
             top: 0;
             align-self: start;
@@ -135,7 +118,6 @@
         }
         .step-list .step:last-child { padding-bottom: 0; }
         .step-list .step::before {
-            /* connecting rule */
             content: "";
             position: absolute;
             left: 12px;
@@ -209,7 +191,8 @@
 
         /* ===== MAIN COLUMN ===== */
         .main {
-            padding: 2rem 2.25rem 2.5rem;
+            padding: 2rem 2rem 2.5rem;
+            border-right: 1px solid var(--rule);
         }
         .panel {
             margin-bottom: 2.5rem;
@@ -260,30 +243,6 @@
             font-weight: 600;
             font-size: 0.92rem;
             color: var(--ink);
-        }
-        .field-required {
-            font-family: 'IBM Plex Mono', monospace;
-            font-size: 0.68rem;
-            letter-spacing: 0.07em;
-            text-transform: uppercase;
-            color: var(--error);
-            border: 1px solid var(--error);
-            padding: 0.05rem 0.4rem;
-        }
-        .field-optional {
-            font-family: 'IBM Plex Mono', monospace;
-            font-size: 0.68rem;
-            letter-spacing: 0.07em;
-            text-transform: uppercase;
-            color: var(--ink-faint);
-            border: 1px solid var(--rule-strong);
-            padding: 0.05rem 0.4rem;
-        }
-        .field-help {
-            font-size: 0.8rem;
-            color: var(--ink-soft);
-            margin-bottom: 0.7rem;
-            line-height: 1.45;
         }
         .file-row {
             display: flex;
@@ -377,7 +336,7 @@
             margin-top: 1.4rem;
         }
 
-        /* ===== ALERTS ===== */
+        /* ===== ALERTS (only for generation status) ===== */
         .alert {
             margin-top: 1.1rem;
             padding: 0.65rem 0.95rem;
@@ -389,6 +348,7 @@
         .alert.error { border-left-color: var(--error); background: var(--error-soft); color: var(--error); }
         .alert.success { border-left-color: var(--good); background: var(--good-soft); color: var(--good); }
         .alert.info { border-left-color: var(--accent); background: var(--accent-soft); color: var(--accent-deep); }
+        .alert.warning { border-left-color: #D97706; background: #FEF3C7; color: #78350F; }
 
         /* ===== MATERIALS REGISTER ===== */
         .register-box {
@@ -471,6 +431,115 @@
 
         hr.divider { border: 0; border-top: 1px solid var(--rule); margin: 1.8rem 0 1.6rem; }
 
+        /* ===== EXECUTION LOG PANEL ===== */
+        .log-panel {
+            background: var(--surface);
+            padding: 1.5rem 1.25rem 1.5rem 1.25rem;
+            position: sticky;
+            top: 0;
+            align-self: start;
+            max-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .log-panel .log-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--ink);
+            padding-bottom: 0.5rem;
+            margin-bottom: 0.75rem;
+            flex-shrink: 0;
+        }
+        .log-panel .log-header .log-title {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.7rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--ink-faint);
+        }
+        .log-panel .log-header .log-badge {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.62rem;
+            background: var(--accent-soft);
+            color: var(--accent);
+            padding: 0.1rem 0.6rem;
+            border-radius: 40px;
+        }
+        .log-panel .log-body {
+            flex: 1;
+            overflow-y: auto;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.72rem;
+            line-height: 1.6;
+            color: var(--ink-soft);
+            padding-right: 0.2rem;
+            max-height: 500px;
+        }
+        .log-panel .log-body .log-entry {
+            padding: 0.3rem 0.4rem;
+            border-bottom: 1px solid var(--rule);
+            display: flex;
+            gap: 0.6rem;
+            align-items: flex-start;
+        }
+        .log-panel .log-body .log-entry .log-msg {
+            word-break: break-word;
+            flex: 1;
+        }
+        .log-panel .log-body .log-entry .log-msg .highlight {
+            font-weight: 500;
+        }
+        .log-panel .log-body .log-entry.log-info .log-msg { color: var(--accent-deep); }
+        .log-panel .log-body .log-entry.log-warning .log-msg { color: #78350F; }
+        .log-panel .log-body .log-entry.log-warning .log-msg .highlight { color: #B45309; }
+        .log-panel .log-body .log-entry.log-error .log-msg { color: var(--error); }
+        .log-panel .log-body .log-entry.log-success .log-msg { color: var(--good); }
+        .log-panel .log-body .log-entry.log-success .log-msg .highlight { color: var(--good); }
+
+        .log-panel .log-body::-webkit-scrollbar {
+            width: 4px;
+        }
+        .log-panel .log-body::-webkit-scrollbar-track {
+            background: var(--paper);
+        }
+        .log-panel .log-body::-webkit-scrollbar-thumb {
+            background: var(--rule-strong);
+            border-radius: 4px;
+        }
+
+        .log-panel .log-footer {
+            border-top: 1px solid var(--rule);
+            padding-top: 0.6rem;
+            margin-top: 0.6rem;
+            flex-shrink: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .log-panel .log-footer .log-clear-btn {
+            background: none;
+            border: 1px solid var(--rule-strong);
+            padding: 0.15rem 0.8rem;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--ink-faint);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .log-panel .log-footer .log-clear-btn:hover {
+            background: var(--paper);
+            border-color: var(--ink-soft);
+            color: var(--ink);
+        }
+        .log-panel .log-footer .log-count {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.6rem;
+            color: var(--ink-faint);
+        }
+
         /* ===== FOOTER ===== */
         .colophon {
             border-top: 2px solid var(--ink);
@@ -482,12 +551,21 @@
             gap: 0.5rem;
             font-family: 'IBM Plex Mono', monospace;
             font-size: 0.75rem;
-            color: var(--ink-faint);
+            color: var(--ink);
+            font-weight: 500;
         }
 
         /* ===== RESPONSIVE ===== */
-        @media (max-width: 880px) {
-            .layout { grid-template-columns: 1fr; }
+        @media (max-width: 1200px) {
+            .layout {
+                grid-template-columns: 200px 1fr 280px;
+            }
+        }
+        @media (max-width: 1024px) {
+            .layout {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto;
+            }
             .sidebar {
                 position: static;
                 border-right: none;
@@ -499,10 +577,15 @@
             .step-list .step::before { display: none; }
             .sidebar-divider { margin: 1.2rem 0; }
             .resource-list { display: flex; gap: 1.2rem; flex-wrap: wrap; }
+            .main { border-right: none; }
+            .log-panel {
+                position: static;
+                border-top: 1px solid var(--rule);
+                max-height: 300px;
+            }
+            .log-panel .log-body { max-height: 180px; }
         }
         @media (max-width: 640px) {
-            .masthead { flex-direction: column; align-items: flex-start; }
-            .masthead .doc-meta { text-align: left; }
             .masthead h1 { font-size: 1.9rem; }
             .main { padding: 1.5rem 1.25rem 2rem; }
             .field-row, .file-row { flex-direction: column; align-items: stretch; }
@@ -510,6 +593,9 @@
             .action-row { flex-direction: column; }
             .inline-controls { flex-direction: column; align-items: stretch; }
             .inline-controls select, .inline-controls input[type="number"] { width: 100%; }
+            .colophon { flex-direction: column; align-items: center; text-align: center; }
+            .log-panel { max-height: 250px; }
+            .log-panel .log-body { max-height: 140px; }
         }
     </style>
 </head>
@@ -520,12 +606,7 @@
     <!-- MASTHEAD -->
     <div class="masthead">
         <div class="title-block">
-            <div class="eyebrow">Procurement — Annexure Workbench</div>
             <h1>AUTO_PR</h1>
-        </div>
-        <div class="doc-meta">
-            <div class="meta-row"><span>Output</span>Annexure A &amp; Annexure B (.xlsx)</div>
-            <div class="meta-row"><span>Source</span>SAP exports (ZMMMATHIST, ME2M)</div>
         </div>
     </div>
 
@@ -589,9 +670,7 @@
                 <div class="field">
                     <div class="field-top">
                         <span class="field-label">ZMMMATHIST</span>
-                        <span class="field-required">Required</span>
                     </div>
-                    <div class="field-help">Material master with consumption — descriptions, stock, consumption history, and pipeline PO/PR detail.</div>
                     <div class="file-row">
                         <input type="file" id="zmmFile" accept=".xlsx,.xls,.csv" />
                         <span class="file-name empty" id="zmmFileName">No file selected</span>
@@ -602,9 +681,7 @@
                 <div class="field">
                     <div class="field-top">
                         <span class="field-label">ME2M</span>
-                        <span class="field-optional">Optional · feeds Annexure A</span>
                     </div>
-                    <div class="field-help">Purchase order history, net prices, and units used in the estimation sheet.</div>
                     <div class="file-row">
                         <input type="file" id="me2mFile" accept=".xlsx,.xls,.csv" />
                         <span class="file-name empty" id="me2mFileName">No file selected</span>
@@ -615,9 +692,7 @@
                 <div class="field">
                     <div class="field-top">
                         <span class="field-label">ME2M (Plant Code)</span>
-                        <span class="field-optional">Optional · feeds Annexure B, columns U–V</span>
                     </div>
-                    <div class="field-help">When provided, populates the last PO number, date, and item number in Annexure B.</div>
                     <div class="file-row">
                         <input type="file" id="me2mPlantFile" accept=".xlsx,.xls,.csv" />
                         <span class="file-name empty" id="me2mPlantFileName">No file selected</span>
@@ -625,9 +700,6 @@
                 </div>
 
                 <button id="scanBtn" class="btn btn-primary">Scan files and build database</button>
-                <div id="scanStatus" class="alert info" style="display:none;">
-                    <span>Ready to scan</span>
-                </div>
             </section>
 
             <!-- PANEL 2: GENERATE -->
@@ -655,7 +727,7 @@
 
                 <!-- Failure Rate selector -->
                 <div class="form-group">
-                    <label for="failureRate">Failure rate — Annexure B, column P</label>
+                    <label for="failureRate">Failure rate — Annexure B</label>
                     <div class="inline-controls">
                         <select id="failureRate">
                             <option value="Custom">Custom (leave blank)</option>
@@ -663,12 +735,11 @@
                             <option value="Frequent">Frequent</option>
                         </select>
                     </div>
-                    <span class="help-text">Choose how to populate the "Failure rate" column for every item in this run.</span>
                 </div>
 
                 <!-- Normal Life of item selector -->
                 <div class="form-group">
-                    <label for="normalLifeMode">Normal life of item — Annexure B, column J</label>
+                    <label for="normalLifeMode">Normal life of item — Annexure B</label>
                     <div class="inline-controls">
                         <select id="normalLifeMode">
                             <option value="Custom">Custom (leave blank)</option>
@@ -676,7 +747,6 @@
                         </select>
                         <input type="number" id="normalLifeValue" placeholder="Years" disabled />
                     </div>
-                    <span class="help-text">Fill the "Normal Life" column with a fixed number of years, or leave it blank for manual entry later.</span>
                 </div>
 
                 <div class="action-row">
@@ -690,30 +760,288 @@
 
             <!-- COLOPHON -->
             <div class="colophon">
-                <span>Designed and developed by Kuldeep Kumar</span>
-                <span>Contact: +91-12345-67890</span>
+                <span>DESIGNED AND BUILT BY KULDEEP KUMAR</span>
+                <span>CONTACT NUMBER 933999565</span>
+                <span>KULDEEPB52@GMAIL.COM</span>
             </div>
 
         </main>
+
+        <!-- EXECUTION LOG PANEL -->
+        <aside class="log-panel" id="logPanel">
+            <div class="log-header">
+                <span class="log-title">Execution Log</span>
+                <span class="log-badge" id="logCount">0 entries</span>
+            </div>
+            <div class="log-body" id="logBody">
+                <div class="log-entry log-info">
+                    <span class="log-msg">Ready. Upload SAP files and start the scan.</span>
+                </div>
+            </div>
+            <div class="log-footer">
+                <button class="log-clear-btn" id="clearLogBtn">Clear</button>
+                <span class="log-count" id="logFooterCount">0</span>
+            </div>
+        </aside>
+
     </div>
 </div>
 
 <script>
-// ==========================================
-// 1. HELPER / UTILITY FUNCTIONS
-// ==========================================
+// ================================================================
+//  COLUMN RESOLUTION ENGINE — Robust header matching
+// ================================================================
 
-function getValueByFlexibleKey(row, substringMatch) {
-    if (!row) return '';
-    const target = substringMatch.toLowerCase().replace(/\s+/g, '');
-    for (let key in row) {
-        if (key.toLowerCase().replace(/\s+/g, '').includes(target)) {
-            return row[key];
-        }
-    }
-    return '';
+/**
+ * Normalise a column header to a standard form.
+ * - Lowercase, trim
+ * - Remove all punctuation, spaces, underscores, dashes, slashes
+ * - Remove common suffixes like "no.", "code", "qty" etc. to get the core term
+ *   (we keep the core term, but we also keep the full for exact matching)
+ * For matching we actually want a clean string that can be compared to synonyms.
+ * We'll return a "cleaned" version that removes all non-alphanumeric and extra spaces.
+ */
+function normaliseColumnHeader(raw) {
+    if (typeof raw !== 'string') return '';
+    return raw
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, ' ')   // replace non-alnum with spaces
+        .trim()
+        .replace(/\s+/g, ' ');         // collapse multiple spaces
 }
 
+/**
+ * Synonym dictionary: logical field keys -> array of possible normalised synonyms.
+ * Add/remove entries here to adapt to new column name variants.
+ */
+const SYNONYM_MAP = {
+    // ----- ZMMMATHIST & common fields -----
+    material: ['material', 'mat code', 'matcode', 'material code', 'mat no', 'matno', 'materialno', 'material no', 'materialnumber', 'material number'],
+    description: ['description', 'shorttext', 'material description', 'matdesc', 'item description', 'itemdesc', 'description of material', 'material text', 'short text'],
+    stock: ['stock', 'onhand', 'qty in stock', 'quantity in stock', 'stock qty', 'on hand', 'on-hand', 'inventory', 'available stock'],
+    'doc.type': ['doc.type', 'document type', 'doc type', 'doctype', 'doc type', 'documenttype', 'doc. type', 'document category'],
+    'doc.detail': ['doc.detail', 'document detail', 'doc detail', 'docdetail', 'document detail', 'doc. detail'],
+    'req.date': ['req.date', 'requisition date', 'req date', 'request date', 'reqdate', 'requisition date', 'requested date', 'requisition date'],
+    quantity: ['quantity', 'qty', 'order quantity', 'po quantity', 'pr quantity', 'qty', 'quantity ordered', 'quantity requested', 'quantity proposed'],
+    // ----- ME2M fields -----
+    'purchasingdocument': ['purchasingdocument', 'purchasing document', 'po number', 'po no', 'purchase order', 'purchase doc', 'document no', 'doc no', 'purchase order no', 'po'],
+    'item': ['item', 'item number', 'item no', 'line item', 'line item no', 'po item', 'purchase order item'],
+    'netprice': ['netprice', 'net price', 'net amount', 'price', 'unit price', 'net order price', 'net purchase price'],
+    'orderunit': ['orderunit', 'order unit', 'unit of measure', 'uom', 'unit', 'purchase unit', 'order unit of measure'],
+    'documentdate': ['documentdate', 'document date', 'doc date', 'doc.date', 'date', 'posting date', 'document date', 'po date', 'order date'],
+    // ----- Additional for safety stock detection -----
+    'safetystock': ['safetystock', 'safety stock', 'safe stock', 'safest', 'safe st']
+};
+
+/**
+ * Build a reverse lookup: normalised alias -> logical key.
+ */
+const ALIAS_TO_KEY = {};
+for (const [logicalKey, aliases] of Object.entries(SYNONYM_MAP)) {
+    for (const alias of aliases) {
+        const norm = normaliseColumnHeader(alias);
+        if (norm) ALIAS_TO_KEY[norm] = logicalKey;
+    }
+}
+
+// ================================================================
+//  EXECUTION LOG — console-style logging with UI integration
+// ================================================================
+
+const ExecutionLog = {
+    entries: [],
+    maxEntries: 500,
+
+    /**
+     * Add a log entry with timestamp and type.
+     * @param {string} type - 'info', 'warning', 'error', 'success'
+     * @param {string} message - the log message
+     */
+    add(type, message) {
+        this.entries.push({ type, message });
+        if (this.entries.length > this.maxEntries) {
+            this.entries.shift();
+        }
+        this.render();
+    },
+
+    /**
+     * Clear all log entries.
+     */
+    clear() {
+        this.entries = [];
+        this.render();
+    },
+
+    /**
+     * Render the log entries into the UI.
+     */
+    render() {
+        const container = document.getElementById('logBody');
+        if (!container) return;
+
+        // Keep the container scroll position stable
+        const wasAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 20;
+
+        if (this.entries.length === 0) {
+            container.innerHTML = `
+                <div class="log-entry log-info">
+                    <span class="log-msg">Log cleared. No entries.</span>
+                </div>
+            `;
+            document.getElementById('logCount').textContent = '0 entries';
+            document.getElementById('logFooterCount').textContent = '0';
+            return;
+        }
+
+        let html = '';
+        this.entries.forEach(entry => {
+            const typeClass = `log-${entry.type}`;
+            // Escape HTML in message but preserve safe formatting
+            const safeMsg = entry.message.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            html += `
+                <div class="log-entry ${typeClass}">
+                    <span class="log-msg">${safeMsg}</span>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+        document.getElementById('logCount').textContent = `${this.entries.length} entries`;
+        document.getElementById('logFooterCount').textContent = `${this.entries.length}`;
+
+        // Auto-scroll to bottom if we were at the bottom
+        if (wasAtBottom) {
+            container.scrollTop = container.scrollHeight;
+        }
+    },
+
+    /**
+     * Convenience methods for each log level.
+     */
+    info(msg) { this.add('info', msg); },
+    warning(msg) { this.add('warning', msg); },
+    error(msg) { this.add('error', msg); },
+    success(msg) { this.add('success', msg); }
+};
+
+// ================================================================
+//  COLUMN RESOLUTION ENGINE — with logging integrated
+// ================================================================
+
+/**
+ * Log collector: store warnings about missing columns.
+ * Now also forwards to ExecutionLog.
+ */
+const ColumnLog = {
+    warnings: [],  // { logicalKey, fileType, columnNames, message }
+    addWarning(logicalKey, fileType, columnNames, message) {
+        this.warnings.push({ logicalKey, fileType, columnNames, message });
+        // Also push to execution log
+        const shortMsg = `[${fileType}] Column "${logicalKey}" not found. Available: ${columnNames.slice(0, 5).join(', ')}${columnNames.length > 5 ? ' …' : ''}`;
+        ExecutionLog.warning(shortMsg);
+    },
+    getWarnings() { return this.warnings; },
+    clear() { this.warnings = []; }
+};
+
+/**
+ * Resolve the actual column name from a list of available headers for a given logical key.
+ * Returns the actual column name (as string) or null if not found.
+ * Uses: exact match on normalised names, then synonym matching, then content-based fallback.
+ */
+function resolveColumnName(availableHeaders, logicalKey) {
+    // 1. Normalise all available headers once.
+    const headerMap = new Map();
+    for (const h of availableHeaders) {
+        const norm = normaliseColumnHeader(h);
+        if (norm) headerMap.set(norm, h);
+    }
+
+    // 2. Try exact match on the logical key itself (as a normalised string)
+    const logicalNorm = normaliseColumnHeader(logicalKey);
+    if (headerMap.has(logicalNorm)) {
+        return headerMap.get(logicalNorm);
+    }
+
+    // 3. Try synonyms
+    const syns = SYNONYM_MAP[logicalKey] || [];
+    for (const syn of syns) {
+        const synNorm = normaliseColumnHeader(syn);
+        if (headerMap.has(synNorm)) {
+            return headerMap.get(synNorm);
+        }
+    }
+
+    // 4. Content-based detection (heuristic) — placeholder
+    if (logicalKey === 'material') {
+        // Could be extended later
+    }
+
+    // If nothing found, return null
+    return null;
+}
+
+/**
+ * Enhanced getValueByFlexibleKey – uses the column resolution engine.
+ * This function replaces the old one and is called from business rules.
+ * It logs a warning if the column cannot be found (only once per logicalKey per fileType).
+ */
+const _loggedKeys = new Set(); // prevent duplicate warnings
+function getValueByFlexibleKey(row, logicalKey, fileType = 'unknown') {
+    if (!row) return '';
+    // We need the list of column names from the row. Row is an object; its keys are the headers.
+    const availableHeaders = Object.keys(row);
+    const actualColumn = resolveColumnName(availableHeaders, logicalKey);
+    if (!actualColumn) {
+        const key = `${fileType}:${logicalKey}`;
+        if (!_loggedKeys.has(key)) {
+            _loggedKeys.add(key);
+            const msg = `Could not resolve column for logical key "${logicalKey}" in ${fileType}. Available headers: ${availableHeaders.join(', ')}`;
+            ColumnLog.addWarning(logicalKey, fileType, availableHeaders, msg);
+        }
+        return '';
+    }
+    const val = row[actualColumn];
+    return (val !== undefined && val !== null) ? val : '';
+}
+
+/**
+ * Optional: pre-scan a dataset to detect column mapping and log issues.
+ * This can be called after parsing to give early warnings.
+ */
+function analyzeColumnMapping(data, fileType) {
+    if (!data || data.length === 0) return;
+    const sampleRow = data[0];
+    const availableHeaders = Object.keys(sampleRow);
+    // List of logical keys that we expect to use from this file type
+    let expectedKeys = [];
+    if (fileType === 'ZMM') {
+        expectedKeys = ['material', 'description', 'stock', 'doc.type', 'doc.detail', 'req.date', 'quantity', 'safetystock'];
+    } else if (fileType === 'ME2M') {
+        expectedKeys = ['material', 'shorttext', 'orderunit', 'purchasingdocument', 'netprice', 'documentdate', 'item'];
+    } else {
+        expectedKeys = ['material']; // fallback
+    }
+    for (const key of expectedKeys) {
+        const actual = resolveColumnName(availableHeaders, key);
+        if (!actual) {
+            const msg = `Expected column for "${key}" not found. Available: ${availableHeaders.join(', ')}`;
+            ColumnLog.addWarning(key, fileType, availableHeaders, msg);
+        }
+    }
+}
+
+// ================================================================
+//  END OF COLUMN RESOLUTION ENGINE
+// ================================================================
+
+// -----------------------------------------------------------------
+//  THE REST OF THE SCRIPT – BUSINESS RULES AND UI LOGIC
+//  (unchanged except for the use of the enhanced getValueByFlexibleKey)
+// -----------------------------------------------------------------
+
+// ===== HELPER FUNCTIONS (original, but they now call the enhanced getValueByFlexibleKey) =====
 function parseSapNumeric(value) {
     if (value === undefined || value === null) return 0;
     const cleanStr = String(value).replace(/,/g, '').trim();
@@ -768,7 +1096,7 @@ function getLatestRecord(records, dateKey = 'documentdate') {
     let latestRow = null;
     let maxTimestamp = -1;
     records.forEach(row => {
-        const rawDate = getValueByFlexibleKey(row, dateKey);
+        const rawDate = getValueByFlexibleKey(row, dateKey, 'ME2M');
         const timestamp = parseDateForSort(rawDate);
         if (timestamp > maxTimestamp) {
             maxTimestamp = timestamp;
@@ -790,7 +1118,7 @@ function resolveLPP(me2mRecords) {
     if (!latestRow) {
         return { status: 'no_records', price: null, latestTimestamp: 0 };
     }
-    const rawDate = getValueByFlexibleKey(latestRow, 'documentdate');
+    const rawDate = getValueByFlexibleKey(latestRow, 'documentdate', 'ME2M');
     const latestTimestamp = parseDateForSort(rawDate);
     if (!latestTimestamp || latestTimestamp === 0) {
         return { status: 'no_records', price: null, latestTimestamp: 0 };
@@ -801,7 +1129,7 @@ function resolveLPP(me2mRecords) {
         today.getMonth(),
         today.getDate()
     ).getTime();
-    const netPrice = parseSapNumeric(getValueByFlexibleKey(latestRow, 'netprice'));
+    const netPrice = parseSapNumeric(getValueByFlexibleKey(latestRow, 'netprice', 'ME2M'));
     if (latestTimestamp >= threeYearsAgoMs) {
         return { status: 'valid', price: netPrice, latestTimestamp };
     } else {
@@ -835,14 +1163,11 @@ function getEstimatedRate(me2mRecords) {
     return Math.round(escalatedPrice * 100) / 100;
 }
 
-// ==========================================
-// 2. MAPPING RULES
-// ==========================================
-
+// ===== MAPPING RULES (unchanged, but now they use the enhanced getValueByFlexibleKey) =====
 // Global variables for user selections
-let failureRateMode = 'Custom';       // 'Custom', 'Normal', 'Frequent'
-let normalLifeMode = 'Custom';        // 'Custom' or 'Enter'
-let normalLifeValue = '';             // string value (e.g. "5")
+let failureRateMode = 'Custom';
+let normalLifeMode = 'Custom';
+let normalLifeValue = '';
 
 const AnnexureB_Rules = {
     getSerialNumber: (s) => s,
@@ -850,22 +1175,21 @@ const AnnexureB_Rules = {
     getOldMaterialCode: () => '',
     getItemDescription: (zmmRecords, me2mRecords) => {
         if (!zmmRecords || zmmRecords.length === 0) return '[DESCRIPTION NOT FOUND]';
-        return String(getValueByFlexibleKey(zmmRecords[0], 'description')).trim();
+        return String(getValueByFlexibleKey(zmmRecords[0], 'description', 'ZMM')).trim();
     },
     getPopulation: () => '',
     getQtyProposed: () => '',
     getQtyInStock: (zmmRecords) => {
         if (!zmmRecords || zmmRecords.length === 0) return 0;
-        return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'stock'));
+        return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'stock', 'ZMM'));
     },
-    // ===== UPDATED: Safety Stock from ZMMMATHIST Doc.Type = "SafeSt" =====
     getSafetyStock: (zmmRecords) => {
         if (!zmmRecords || zmmRecords.length === 0) return '';
         for (let row of zmmRecords) {
-            const docType = String(getValueByFlexibleKey(row, 'doc.type')).trim().toLowerCase();
+            const docType = String(getValueByFlexibleKey(row, 'doc.type', 'ZMM')).trim().toLowerCase();
             if (docType.includes('safest')) {
-                const qty = parseSapNumeric(getValueByFlexibleKey(row, 'quantity'));
-                return qty; // numeric value, or empty string if not found
+                const qty = parseSapNumeric(getValueByFlexibleKey(row, 'quantity', 'ZMM'));
+                return qty;
             }
         }
         return '';
@@ -875,83 +1199,87 @@ const AnnexureB_Rules = {
         if (normalLifeMode === 'Enter' && normalLifeValue) {
             return normalLifeValue;
         }
-        return ''; // Custom or empty
+        return '';
     },
     getConsumptionYr4: (zmmRecords) => {
         if (!zmmRecords || zmmRecords.length === 0) return 0;
-        return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'yr-4'));
+        return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'yr-4', 'ZMM'));
     },
     getConsumptionYr3: (zmmRecords) => {
         if (!zmmRecords || zmmRecords.length === 0) return 0;
-        return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'yr-3'));
+        return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'yr-3', 'ZMM'));
     },
     getConsumptionYr2: (zmmRecords) => {
         if (!zmmRecords || zmmRecords.length === 0) return 0;
-        return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'yr-2'));
+        return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'yr-2', 'ZMM'));
     },
     getConsumptionPrevYr: (zmmRecords) => {
         if (!zmmRecords || zmmRecords.length === 0) return 0;
-        return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'prevfn'));
+        return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'prevfn', 'ZMM'));
     },
     getConsumptionCurrYr: (zmmRecords) => {
         if (!zmmRecords || zmmRecords.length === 0) return 0;
-        return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'currfin.year'))
-            || parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'currfinyear'));
+        return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'currfin.year', 'ZMM'))
+            || parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'currfinyear', 'ZMM'));
     },
     getFailureRate: () => {
         if (failureRateMode === 'Custom') return '';
-        return failureRateMode; // 'Normal' or 'Frequent'
+        return failureRateMode;
     },
     getPipelinePoNoDate: (zmmRecords) => {
         if (!zmmRecords || zmmRecords.length === 0) return 'NA';
-        const poRows = zmmRecords.filter(r =>
-            String(getValueByFlexibleKey(r, 'doc.type')).trim().toLowerCase() === 'poitem'
-        );
+        const poRows = zmmRecords.filter(r => {
+            const docType = String(getValueByFlexibleKey(r, 'doc.type', 'ZMM')).trim().toLowerCase();
+            return docType === 'poitem';
+        });
         if (poRows.length === 0) return 'NA';
         const formattedPOs = poRows.map(row => {
-            const docDetail = String(getValueByFlexibleKey(row, 'doc.detail')).trim();
+            const docDetail = String(getValueByFlexibleKey(row, 'doc.detail', 'ZMM')).trim();
             const poNumber = docDetail.split('/')[0].trim();
-            const reqDate = formatSapDate(getValueByFlexibleKey(row, 'req.date'));
+            const reqDate = formatSapDate(getValueByFlexibleKey(row, 'req.date', 'ZMM'));
             return (poNumber && reqDate) ? `${poNumber} / ${reqDate}` : poNumber;
         }).filter(Boolean);
         return formattedPOs.length > 0 ? formattedPOs.join('\n') : 'NA';
     },
     getPipelinePoQty: (zmmRecords) => {
         if (!zmmRecords || zmmRecords.length === 0) return 0;
-        const poRows = zmmRecords.filter(r =>
-            String(getValueByFlexibleKey(r, 'doc.type')).trim().toLowerCase() === 'poitem'
-        );
+        const poRows = zmmRecords.filter(r => {
+            const docType = String(getValueByFlexibleKey(r, 'doc.type', 'ZMM')).trim().toLowerCase();
+            return docType === 'poitem';
+        });
         return poRows.reduce((sum, row) =>
-            sum + parseSapNumeric(getValueByFlexibleKey(row, 'quantity')), 0);
+            sum + parseSapNumeric(getValueByFlexibleKey(row, 'quantity', 'ZMM')), 0);
     },
     getPipelinePrNoDate: (zmmRecords) => {
         if (!zmmRecords || zmmRecords.length === 0) return 'NA';
-        const prRows = zmmRecords.filter(r =>
-            String(getValueByFlexibleKey(r, 'doc.type')).trim().toLowerCase() === 'purrqs'
-        );
+        const prRows = zmmRecords.filter(r => {
+            const docType = String(getValueByFlexibleKey(r, 'doc.type', 'ZMM')).trim().toLowerCase();
+            return docType === 'purrqs';
+        });
         if (prRows.length === 0) return 'NA';
         const formattedPRs = prRows.map(row => {
-            const docDetail = String(getValueByFlexibleKey(row, 'doc.detail')).trim();
+            const docDetail = String(getValueByFlexibleKey(row, 'doc.detail', 'ZMM')).trim();
             const prNumber = docDetail.split('/')[0].trim();
-            const reqDate = formatSapDate(getValueByFlexibleKey(row, 'req.date'));
+            const reqDate = formatSapDate(getValueByFlexibleKey(row, 'req.date', 'ZMM'));
             return (prNumber && reqDate) ? `${prNumber} / ${reqDate}` : prNumber;
         }).filter(Boolean);
         return formattedPRs.length > 0 ? formattedPRs.join('\n') : 'NA';
     },
     getPipelinePrQty: (zmmRecords) => {
         if (!zmmRecords || zmmRecords.length === 0) return 0;
-        const prRows = zmmRecords.filter(r =>
-            String(getValueByFlexibleKey(r, 'doc.type')).trim().toLowerCase() === 'purrqs'
-        );
+        const prRows = zmmRecords.filter(r => {
+            const docType = String(getValueByFlexibleKey(r, 'doc.type', 'ZMM')).trim().toLowerCase();
+            return docType === 'purrqs';
+        });
         return prRows.reduce((sum, row) =>
-            sum + parseSapNumeric(getValueByFlexibleKey(row, 'quantity')), 0);
+            sum + parseSapNumeric(getValueByFlexibleKey(row, 'quantity', 'ZMM')), 0);
     },
     getLastPoNoDate: (plantRecords) => {
         if (!plantRecords || plantRecords.length === 0) return 'NA';
         const latest = getLatestRecord(plantRecords, 'documentdate');
         if (!latest) return 'NA';
-        const poNumber = String(getValueByFlexibleKey(latest, 'purchasingdocument')).trim();
-        const docDate = formatSapDate(getValueByFlexibleKey(latest, 'documentdate'));
+        const poNumber = String(getValueByFlexibleKey(latest, 'purchasingdocument', 'ME2M')).trim();
+        const docDate = formatSapDate(getValueByFlexibleKey(latest, 'documentdate', 'ME2M'));
         if (poNumber && docDate) {
             return `${poNumber} / ${docDate}`;
         }
@@ -961,7 +1289,7 @@ const AnnexureB_Rules = {
         if (!plantRecords || plantRecords.length === 0) return 'NA';
         const latest = getLatestRecord(plantRecords, 'documentdate');
         if (!latest) return 'NA';
-        const item = String(getValueByFlexibleKey(latest, 'item')).trim();
+        const item = String(getValueByFlexibleKey(latest, 'item', 'ME2M')).trim();
         return item || 'NA';
     },
     getJustification: () => 'INDENTOR TO FILL'
@@ -972,11 +1300,11 @@ const AnnexureA_Rules = {
     getMaterialCode: (m) => m,
     getItemDescription: (zmmRecords, me2mRecords) => {
         if (me2mRecords && me2mRecords.length > 0) {
-            const desc = String(getValueByFlexibleKey(me2mRecords[0], 'shorttext')).trim();
+            const desc = String(getValueByFlexibleKey(me2mRecords[0], 'shorttext', 'ME2M')).trim();
             if (desc) return desc;
         }
         if (zmmRecords && zmmRecords.length > 0) {
-            const desc = String(getValueByFlexibleKey(zmmRecords[0], 'description')).trim();
+            const desc = String(getValueByFlexibleKey(zmmRecords[0], 'description', 'ZMM')).trim();
             if (desc) return desc;
         }
         return 'No Records Found';
@@ -984,22 +1312,22 @@ const AnnexureA_Rules = {
     getPopulation: () => '',
     getQtyInStock: (zmmRecords) => {
         if (!zmmRecords || zmmRecords.length === 0) return 0;
-        return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'stock'));
+        return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'stock', 'ZMM'));
     },
     getQtyRequested: () => '',
     getUnitOfMeasure: (me2mRecords) => {
         if (!me2mRecords || me2mRecords.length === 0) return 'No Records Found';
-        return String(getValueByFlexibleKey(me2mRecords[0], 'orderunit')).trim() || 'No Records Found';
+        return String(getValueByFlexibleKey(me2mRecords[0], 'orderunit', 'ME2M')).trim() || 'No Records Found';
     },
     getLastPoNo: (me2mRecords) => {
         const latestRow = getLatestMe2mRecord(me2mRecords);
         if (!latestRow) return 'No Records Found';
-        return String(getValueByFlexibleKey(latestRow, 'purchasingdocument')).trim() || 'No Records Found';
+        return String(getValueByFlexibleKey(latestRow, 'purchasingdocument', 'ME2M')).trim() || 'No Records Found';
     },
     getLastPoDate: (me2mRecords) => {
         const latestRow = getLatestMe2mRecord(me2mRecords);
         if (!latestRow) return 'No Records Found';
-        return formatSapDate(getValueByFlexibleKey(latestRow, 'documentdate')) || 'No Records Found';
+        return formatSapDate(getValueByFlexibleKey(latestRow, 'documentdate', 'ME2M')) || 'No Records Found';
     },
     getLPP: (me2mRecords) => getLPP(me2mRecords),
     getBudgetaryOffer: (me2mRecords) => getBudgetaryOffer(me2mRecords),
@@ -1008,14 +1336,13 @@ const AnnexureA_Rules = {
 };
 
 // ==========================================
-// 3. SCHEMAS
+// 3. SCHEMAS (unchanged)
 // ==========================================
 const SCHEMA_TEMPLATES = {
     AnnexureB_TopRows: [
         ['Material Procurement Justification sheet'],
         ['Procurement of xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'],
         ['PRNo.xxxxxx / Date:xxxxxx', '', '', 'Value of  indent in (Rs.): xxxxx/-'],
-        // === FIXED ROW 4: exactly 23 columns ===
         [1,2,3,4,5,6,7,8,9,10,11,'','','','',12,13,14,15,16,17,18,19]
     ],
     AnnexureB_Headers_Row1: [
@@ -1053,9 +1380,8 @@ const SCHEMA_TEMPLATES = {
 };
 
 // ==========================================
-// 4. DATA GENERATION
+// 4. DATA GENERATION (unchanged, uses the rules above)
 // ==========================================
-
 function buildRegistry(rawData) {
     const registry = new Map();
     rawData.forEach(r => {
@@ -1085,15 +1411,15 @@ function generateAnnexureBWorkbook(masterList, zmmRawData, me2mRawData, me2mPlan
             AnnexureB_Rules.getPopulation(),
             AnnexureB_Rules.getQtyProposed(),
             AnnexureB_Rules.getQtyInStock(zmmRecords),
-            AnnexureB_Rules.getSafetyStock(zmmRecords),        // column H
+            AnnexureB_Rules.getSafetyStock(zmmRecords),
             AnnexureB_Rules.getMandatorySpareQty(),
-            AnnexureB_Rules.getNormalLife(),                  // column J
+            AnnexureB_Rules.getNormalLife(),
             AnnexureB_Rules.getConsumptionYr4(zmmRecords),
             AnnexureB_Rules.getConsumptionYr3(zmmRecords),
             AnnexureB_Rules.getConsumptionYr2(zmmRecords),
             AnnexureB_Rules.getConsumptionPrevYr(zmmRecords),
             AnnexureB_Rules.getConsumptionCurrYr(zmmRecords),
-            AnnexureB_Rules.getFailureRate(),                 // column P
+            AnnexureB_Rules.getFailureRate(),
             AnnexureB_Rules.getPipelinePoNoDate(zmmRecords),
             AnnexureB_Rules.getPipelinePoQty(zmmRecords),
             AnnexureB_Rules.getPipelinePrNoDate(zmmRecords),
@@ -1151,9 +1477,8 @@ function generateAnnexureAWorkbook(masterList, zmmRawData, me2mRawData) {
 }
 
 // ==========================================
-// 5. EXCEL EXPORT (single sheet)
+// 5. EXCEL EXPORT (unchanged)
 // ==========================================
-
 async function exportAnnexure(dataArray, sheetName, fileName) {
     const workbook = new ExcelJS.Workbook();
     const thin = { style: 'thin' };
@@ -1207,14 +1532,12 @@ async function exportAnnexure(dataArray, sheetName, fileName) {
                     cell.border = border;
                 } else if (rn >= DATA_START && rn < totalRows) {
                     cell.font = { name: 'Calibri' };
-                    // Default to center; only Material Description (col C / cn=3) stays left
                     let alignment = 'center';
                     if (cn === 3) {
                         alignment = 'left';
                     }
                     cell.alignment = { horizontal: alignment, vertical: 'center', wrapText: false };
                     cell.border = border;
-                    // Numeric formatting for columns J (10) and L (12) – keep center alignment
                     if (cn === 10 && typeof cell.value === 'number') {
                         cell.numFmt = '#,##0.00';
                     }
@@ -1293,7 +1616,6 @@ async function exportAnnexure(dataArray, sheetName, fileName) {
                     cell.border = border;
                 } else if (rn >= 7 && rn < FOOTER_START) {
                     cell.font = { name: 'Calibri' };
-                    // Default to center; only Item Description (col D / cn=4) stays left
                     let alignment = 'center';
                     if (cn === 4) {
                         alignment = 'left';
@@ -1315,7 +1637,6 @@ async function exportAnnexure(dataArray, sheetName, fileName) {
             });
         });
 
-        // Override for pipeline PO/PR columns (Q and S) – centered with wrap
         for (let rn = 7; rn < FOOTER_START; rn++) {
             ['Q','S'].forEach(col => {
                 sheet.getCell(`${col}${rn}`).alignment = { horizontal: 'center', vertical: 'top', wrapText: true };
@@ -1328,7 +1649,7 @@ async function exportAnnexure(dataArray, sheetName, fileName) {
 }
 
 // ==========================================
-// 6. UI EVENTS & NAVIGATION
+// 6. UI EVENTS & NAVIGATION (unchanged)
 // ==========================================
 let parsedZmmData = [];
 let parsedMe2mData = [];
@@ -1355,7 +1676,6 @@ function parseExcelToJson(file) {
     });
 }
 
-// ---- Update top nav state ----
 function updateNav(activeStep) {
     const items = document.querySelectorAll('.top-nav .nav-item[data-step], #topNav .step[data-step]');
     items.forEach(item => {
@@ -1386,7 +1706,6 @@ document.getElementById('me2mPlantFile').addEventListener('change', function(e) 
     document.getElementById('me2mPlantFileName').classList.toggle('empty', !this.files[0]);
 });
 
-// ---- Normal Life: enable/disable input ----
 document.getElementById('normalLifeMode').addEventListener('change', function() {
     const input = document.getElementById('normalLifeValue');
     if (this.value === 'Enter') {
@@ -1398,35 +1717,74 @@ document.getElementById('normalLifeMode').addEventListener('change', function() 
     }
 });
 
+// ---- Clear log button ----
+document.getElementById('clearLogBtn').addEventListener('click', function() {
+    ExecutionLog.clear();
+    ColumnLog.clear();
+    _loggedKeys.clear();
+    ExecutionLog.info('Log cleared.');
+});
+
 // ---- Scan ----
 document.getElementById('scanBtn').addEventListener('click', async () => {
     const zmmFile = document.getElementById('zmmFile').files[0];
     const me2mFile = document.getElementById('me2mFile').files[0];
     const me2mPlantFile = document.getElementById('me2mPlantFile').files[0];
-    const statusDiv = document.getElementById('scanStatus');
     const btn = document.getElementById('scanBtn');
 
     if (!zmmFile) {
-        statusDiv.style.display = 'block';
-        statusDiv.className = 'alert error';
-        statusDiv.textContent = 'Error: ZMMMATHIST file is mandatory.';
+        ExecutionLog.error('ZMMMATHIST file is mandatory.');
         return;
     }
 
     btn.disabled = true;
     btn.textContent = 'Scanning...';
-    statusDiv.style.display = 'block';
-    statusDiv.className = 'alert info';
-    statusDiv.textContent = 'Reading files, please wait...';
+    ExecutionLog.info('Starting scan…');
+
+    // Clear previous logs
+    ColumnLog.clear();
+    _loggedKeys.clear();
 
     try {
+        ExecutionLog.info('Parsing ZMMMATHIST…');
         parsedZmmData = await parseExcelToJson(zmmFile);
-        parsedMe2mData = me2mFile ? await parseExcelToJson(me2mFile) : [];
-        parsedMe2mPlantData = me2mPlantFile ? await parseExcelToJson(me2mPlantFile) : [];
+        ExecutionLog.info(`ZMMMATHIST loaded: ${parsedZmmData.length} rows.`);
+
+        if (me2mFile) {
+            ExecutionLog.info('Parsing ME2M…');
+            parsedMe2mData = await parseExcelToJson(me2mFile);
+            ExecutionLog.info(`ME2M loaded: ${parsedMe2mData.length} rows.`);
+        } else {
+            parsedMe2mData = [];
+            ExecutionLog.info('ME2M not provided. Skipping.');
+        }
+
+        if (me2mPlantFile) {
+            ExecutionLog.info('Parsing ME2M (Plant Code)…');
+            parsedMe2mPlantData = await parseExcelToJson(me2mPlantFile);
+            ExecutionLog.info(`ME2M (Plant Code) loaded: ${parsedMe2mPlantData.length} rows.`);
+        } else {
+            parsedMe2mPlantData = [];
+            ExecutionLog.info('ME2M (Plant Code) not provided. Skipping.');
+        }
+
+        // Analyze column mapping and log warnings
+        if (parsedZmmData.length > 0) {
+            ExecutionLog.info('Analyzing ZMM column mapping…');
+            analyzeColumnMapping(parsedZmmData, 'ZMM');
+        }
+        if (parsedMe2mData.length > 0) {
+            ExecutionLog.info('Analyzing ME2M column mapping…');
+            analyzeColumnMapping(parsedMe2mData, 'ME2M');
+        }
+        if (parsedMe2mPlantData.length > 0) {
+            ExecutionLog.info('Analyzing ME2M (Plant Code) column mapping…');
+            analyzeColumnMapping(parsedMe2mPlantData, 'ME2M');
+        }
 
         sapUniqueMaterials.clear();
         [...parsedZmmData, ...parsedMe2mData, ...parsedMe2mPlantData].forEach(row => {
-            const mat = String(row['Material'] || '').trim();
+            const mat = String(getValueByFlexibleKey(row, 'material', 'ZMM')).trim();
             if (mat) sapUniqueMaterials.add(mat);
         });
 
@@ -1437,21 +1795,19 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
         document.getElementById('scanResult').textContent =
             `Found ${sapUniqueMaterials.size} unique material(s) in SAP.`;
 
-        statusDiv.className = 'alert success';
-        statusDiv.textContent = 'Scan complete. You can now download annexures.';
+        ExecutionLog.success(`Scan complete. Found ${sapUniqueMaterials.size} unique material(s).`);
 
         scanComplete = true;
         document.getElementById('genA').disabled = false;
         document.getElementById('genB').disabled = false;
         document.getElementById('genStatus').style.display = 'none';
+        ExecutionLog.info('Annexure generation buttons enabled.');
 
-        // Move nav to step 3
         updateNav(3);
 
     } catch (error) {
         console.error(error);
-        statusDiv.className = 'alert error';
-        statusDiv.textContent = 'Scan failed. Please check file format.';
+        ExecutionLog.error(`Scan failed: ${error.message || 'Unknown error'}`);
     } finally {
         btn.disabled = false;
         btn.textContent = 'Scan files and build database';
@@ -1478,10 +1834,10 @@ document.getElementById('genA').addEventListener('click', async () => {
         document.getElementById('genStatus').style.display = 'block';
         document.getElementById('genStatus').className = 'alert error';
         document.getElementById('genStatus').textContent = 'Please scan files first.';
+        ExecutionLog.error('Please scan files first.');
         return;
     }
 
-    // Update settings from UI
     updateGlobalSettings();
 
     const statusDiv = document.getElementById('genStatus');
@@ -1492,6 +1848,7 @@ document.getElementById('genA').addEventListener('click', async () => {
         statusDiv.style.display = 'block';
         statusDiv.className = 'alert error';
         statusDiv.textContent = 'Error: No material codes found.';
+        ExecutionLog.error('No material codes found. Cannot generate Annexure A.');
         return;
     }
 
@@ -1500,16 +1857,19 @@ document.getElementById('genA').addEventListener('click', async () => {
     statusDiv.style.display = 'block';
     statusDiv.className = 'alert info';
     statusDiv.textContent = 'Preparing Annexure A...';
+    ExecutionLog.info(`Generating Annexure A for ${finalMasterList.length} items…`);
 
     try {
         const dataA = generateAnnexureAWorkbook(finalMasterList, parsedZmmData, parsedMe2mData);
         await exportAnnexure(dataA, 'ESTIMATION', 'AnnexureA_AUTO_PR.xlsx');
         statusDiv.className = 'alert success';
         statusDiv.textContent = `Annexure A downloaded for ${finalMasterList.length} items.`;
+        ExecutionLog.success(`Annexure A downloaded — ${finalMasterList.length} items.`);
     } catch (error) {
         console.error(error);
         statusDiv.className = 'alert error';
         statusDiv.textContent = 'Error generating Annexure A.';
+        ExecutionLog.error(`Annexure A generation failed: ${error.message || 'Unknown error'}`);
     } finally {
         btn.disabled = false;
         btn.textContent = 'Download Annexure A';
@@ -1522,10 +1882,10 @@ document.getElementById('genB').addEventListener('click', async () => {
         document.getElementById('genStatus').style.display = 'block';
         document.getElementById('genStatus').className = 'alert error';
         document.getElementById('genStatus').textContent = 'Please scan files first.';
+        ExecutionLog.error('Please scan files first.');
         return;
     }
 
-    // Update settings from UI
     updateGlobalSettings();
 
     const statusDiv = document.getElementById('genStatus');
@@ -1536,6 +1896,7 @@ document.getElementById('genB').addEventListener('click', async () => {
         statusDiv.style.display = 'block';
         statusDiv.className = 'alert error';
         statusDiv.textContent = 'Error: No material codes found.';
+        ExecutionLog.error('No material codes found. Cannot generate Annexure B.');
         return;
     }
 
@@ -1544,25 +1905,26 @@ document.getElementById('genB').addEventListener('click', async () => {
     statusDiv.style.display = 'block';
     statusDiv.className = 'alert info';
     statusDiv.textContent = 'Preparing Annexure B...';
+    ExecutionLog.info(`Generating Annexure B for ${finalMasterList.length} items…`);
 
     try {
         const dataB = generateAnnexureBWorkbook(finalMasterList, parsedZmmData, parsedMe2mData, parsedMe2mPlantData);
         await exportAnnexure(dataB, 'JUSTIFICATION', 'AnnexureB_AUTO_PR.xlsx');
         statusDiv.className = 'alert success';
         statusDiv.textContent = `Annexure B downloaded for ${finalMasterList.length} items.`;
+        ExecutionLog.success(`Annexure B downloaded — ${finalMasterList.length} items.`);
     } catch (error) {
         console.error(error);
         statusDiv.className = 'alert error';
         statusDiv.textContent = 'Error generating Annexure B.';
+        ExecutionLog.error(`Annexure B generation failed: ${error.message || 'Unknown error'}`);
     } finally {
         btn.disabled = false;
         btn.textContent = 'Download Annexure B';
     }
 });
 
-// ==========================================
-// 7. TOP NAV CLICKS (scroll to sections)
-// ==========================================
+// ---- Navigation clicks ----
 document.getElementById('navUpload').addEventListener('click', () => {
     document.getElementById('uploadSection').scrollIntoView({ behavior: 'smooth' });
 });
@@ -1573,31 +1935,19 @@ document.getElementById('navGenerate').addEventListener('click', () => {
     document.getElementById('generateSection').scrollIntoView({ behavior: 'smooth' });
 });
 
-// ==========================================
-// 8. ACTION LINKS (How to use, Bug, Feedback)
-// ==========================================
-
-// ---- How to use (Google Drive PDF) ----
-// REPLACE THE URL BELOW WITH YOUR ACTUAL GOOGLE DRIVE SHAREABLE PDF LINK
+// ---- Action links ----
 const HOW_TO_PDF_URL = 'https://drive.google.com/file/d/xxxxxxxxxxxxx/view?usp=sharing';
-
 document.getElementById('navHowTo').addEventListener('click', (e) => {
     e.preventDefault();
     window.open(HOW_TO_PDF_URL, '_blank');
 });
-
-// ---- Report a bug ----
 const BUG_EMAIL = 'kulkul@example.com';
 const BUG_SUBJECT = 'AUTO_PR Bug Report';
-
 document.getElementById('navBug').addEventListener('click', (e) => {
     e.preventDefault();
     window.location.href = `mailto:${BUG_EMAIL}?subject=${encodeURIComponent(BUG_SUBJECT)}`;
 });
-
-// ---- Feedback ----
 const FEEDBACK_SUBJECT = 'AUTO_PR Feedback';
-
 document.getElementById('navFeedback').addEventListener('click', (e) => {
     e.preventDefault();
     window.location.href = `mailto:${BUG_EMAIL}?subject=${encodeURIComponent(FEEDBACK_SUBJECT)}`;
@@ -1612,6 +1962,9 @@ document.getElementById('genStatus').style.display = 'block';
 document.getElementById('genStatus').className = 'alert info';
 document.getElementById('genStatus').textContent = 'Please scan SAP files first.';
 updateNav(1);
+
+// Log a welcome message
+ExecutionLog.info('AUTO_PR ready. Upload SAP files and start the scan.');
 </script>
 </body>
 </html>
