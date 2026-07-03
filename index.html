@@ -789,6 +789,15 @@
 
 <script>
 // ================================================================
+//  MATERIAL FILTER — exclude codes ending with 'N' (case‑insensitive)
+// ================================================================
+function isMaterialExcluded(mat) {
+    if (!mat) return false;
+    const trimmed = mat.trim();
+    return trimmed.toUpperCase().endsWith('N');
+}
+
+// ================================================================
 //  COLUMN RESOLUTION ENGINE — Robust header matching
 // ================================================================
 
@@ -1783,10 +1792,22 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
         }
 
         sapUniqueMaterials.clear();
-        [...parsedZmmData, ...parsedMe2mData, ...parsedMe2mPlantData].forEach(row => {
+        // Collect materials, filtering out those ending with 'N'
+        const allRows = [...parsedZmmData, ...parsedMe2mData, ...parsedMe2mPlantData];
+        let excludedCount = 0;
+        allRows.forEach(row => {
             const mat = String(getValueByFlexibleKey(row, 'material', 'ZMM')).trim();
-            if (mat) sapUniqueMaterials.add(mat);
+            if (mat) {
+                if (isMaterialExcluded(mat)) {
+                    excludedCount++;
+                } else {
+                    sapUniqueMaterials.add(mat);
+                }
+            }
         });
+        if (excludedCount > 0) {
+            ExecutionLog.info(`Excluded ${excludedCount} material(s) ending with 'N'.`);
+        }
 
         const container = document.getElementById('materialTagsContainer');
         container.innerHTML = Array.from(sapUniqueMaterials).sort()
@@ -1818,7 +1839,16 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
 function getFinalMasterList() {
     const rawText = document.getElementById('anchorList').value;
     const pastedMaterials = rawText.split(/[\s,]+/).map(s => s.trim()).filter(Boolean);
-    return Array.from(new Set([...sapUniqueMaterials, ...pastedMaterials])).sort();
+    // Filter out any pasted materials that end with 'N'
+    const filteredPasted = pastedMaterials.filter(m => !isMaterialExcluded(m));
+    const combined = new Set([...sapUniqueMaterials, ...filteredPasted]);
+    // Also filter the final set (though sapUniqueMaterials already excludes them)
+    const finalList = Array.from(combined).filter(m => !isMaterialExcluded(m)).sort();
+    const excludedFromPaste = pastedMaterials.length - filteredPasted.length;
+    if (excludedFromPaste > 0) {
+        ExecutionLog.info(`Excluded ${excludedFromPaste} additional material(s) ending with 'N'.`);
+    }
+    return finalList;
 }
 
 // ---- Update global variables from UI ----
