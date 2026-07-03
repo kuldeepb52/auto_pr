@@ -832,14 +832,24 @@ const SYNONYM_MAP = {
     'doc.detail': ['doc.detail', 'document detail', 'doc detail', 'docdetail', 'document detail', 'doc. detail'],
     'req.date': ['req.date', 'requisition date', 'req date', 'request date', 'reqdate', 'requisition date', 'requested date', 'requisition date'],
     quantity: ['quantity', 'qty', 'order quantity', 'po quantity', 'pr quantity', 'qty', 'quantity ordered', 'quantity requested', 'quantity proposed'],
+
     // ----- ME2M fields -----
     'purchasingdocument': ['purchasingdocument', 'purchasing document', 'po number', 'po no', 'purchase order', 'purchase doc', 'document no', 'doc no', 'purchase order no', 'po'],
     'item': ['item', 'item number', 'item no', 'line item', 'line item no', 'po item', 'purchase order item'],
     'netprice': ['netprice', 'net price', 'net amount', 'price', 'unit price', 'net order price', 'net purchase price'],
     'orderunit': ['orderunit', 'order unit', 'unit of measure', 'uom', 'unit', 'purchase unit', 'order unit of measure'],
     'documentdate': ['documentdate', 'document date', 'doc date', 'doc.date', 'date', 'posting date', 'document date', 'po date', 'order date'],
+
     // ----- Additional for safety stock detection -----
-    'safetystock': ['safetystock', 'safety stock', 'safe stock', 'safest', 'safe st']
+    'safetystock': ['safetystock', 'safety stock', 'safe stock', 'safest', 'safe st'],
+
+    // ----- Consumption columns (ZMMMATHIST) -----
+    'yr-4': ['yr-4', 'yr 4', 'cons curr fin yr 4', 'cons curr fin yr - 4', 'curr fin yr-4', 'curr fin yr 4', 'conscurrfin yr4'],
+    'yr-3': ['yr-3', 'yr 3', 'cons curr fin yr 3', 'cons curr fin yr -3', 'curr fin yr-3', 'curr fin yr 3', 'conscurrfin yr3'],
+    'yr-2': ['yr-2', 'yr 2', 'cons curr fin yr 2', 'cons curr fin yr -2', 'curr fin yr-2', 'curr fin yr 2', 'conscurrfin yr2'],
+    'prevfn': ['prevfn', 'prev fin yr', 'cons prev fin yr', 'prev fin yr.', 'cons-prev fin yr', 'previous fin yr'],
+    'currfin.year': ['currfin.year', 'currfin year', 'curr fin year', 'cons curr fin year', 'curr fin yr', 'conscurrfin year'],
+    'currfinyear': ['currfinyear', 'curr fin year', 'curr fin yr', 'cons curr fin year', 'conscurrfin year']
 };
 
 /**
@@ -1026,7 +1036,7 @@ function analyzeColumnMapping(data, fileType) {
     // List of logical keys that we expect to use from this file type
     let expectedKeys = [];
     if (fileType === 'ZMM') {
-        expectedKeys = ['material', 'description', 'stock', 'doc.type', 'doc.detail', 'req.date', 'quantity', 'safetystock'];
+        expectedKeys = ['material', 'description', 'stock', 'doc.type', 'doc.detail', 'req.date', 'quantity', 'safetystock', 'yr-4', 'yr-3', 'yr-2', 'prevfn', 'currfin.year', 'currfinyear'];
     } else if (fileType === 'ME2M') {
         expectedKeys = ['material', 'shorttext', 'orderunit', 'purchasingdocument', 'netprice', 'documentdate', 'item'];
     } else {
