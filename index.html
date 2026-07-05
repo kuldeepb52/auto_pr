@@ -131,12 +131,13 @@
         .step-list .step:last-child {
             padding-bottom: 0;
         }
+        /* Vertical line — fixed to go all the way down */
         .step-list .step::before {
             content: "";
             position: absolute;
             left: 12px;
             top: 28px;
-            bottom: -2px;
+            bottom: -4px;
             width: 1px;
             background: var(--rule-strong);
         }
@@ -854,6 +855,18 @@
             color: red;
             margin-left: 2px;
         }
+
+        /* Fix for inline label + info icon in file-upload-row */
+        .file-upload-row .upload-label-with-icon {
+            display: inline-flex;
+            align-items: center;
+            font-size: 0.85rem;
+            color: var(--ink-soft);
+            gap: 0.2rem;
+        }
+        .file-upload-row .upload-label-with-icon .info-icon-wrapper {
+            margin-left: 0.1rem;
+        }
     </style>
 </head>
 <body>
@@ -955,7 +968,6 @@
                         <span class="panel-index mono">02</span>
                         <h2>Scan and build material codes database</h2>
                     </div>
-                    <!-- Shortened description -->
                     <p class="panel-desc">The unique material codes identified from the uploaded files are listed below.</p>
 
                     <div class="register-box">
@@ -977,11 +989,11 @@
                             </span>
                         </label>
                         <textarea id="anchorList" rows="3" placeholder="One per line or comma-separated, e.g.&#10;M123456789&#10;M987654321"></textarea>
-                        <!-- Removed "These are merged with the unique materials codes found in input files scan." -->
+                        <!-- Removed the help text "These are merged with the unique materials codes found in input files scan." -->
 
                         <!-- Upload option -->
                         <div class="file-upload-row">
-                            <span style="font-size:0.85rem; color:var(--ink-soft); display:inline-flex; align-items:center; gap:0.2rem;">
+                            <span class="upload-label-with-icon">
                                 Or upload an Excel file:
                                 <span class="info-icon-wrapper" id="uploadInfoWrapper">
                                     <span class="info-icon" id="uploadInfoIcon">i</span>
@@ -993,7 +1005,7 @@
                             <input type="file" id="additionalMaterialFile" accept=".xlsx,.xls,.csv" />
                             <span class="file-name empty" id="additionalFileName">No file selected</span>
                         </div>
-                        <!-- Removed "The file should contain material codes in the first column (starting from the first row)." -->
+                        <!-- Removed the help text "The file should contain material codes in the first column (starting from the first row)." -->
                     </div>
                 </section>
 
@@ -2090,19 +2102,18 @@
         });
 
         // ---- Info icon click toggles tooltip ----
-        // For the main info icon
         document.getElementById('infoIconWrapper').addEventListener('click', function(e) {
             e.stopPropagation();
             this.classList.toggle('show-tooltip');
         });
-        // For the upload info icon
         document.getElementById('uploadInfoWrapper').addEventListener('click', function(e) {
             e.stopPropagation();
             this.classList.toggle('show-tooltip');
         });
-        // Click anywhere else closes all tooltips
+        // Click anywhere else closes the tooltips
         document.addEventListener('click', function(e) {
-            document.querySelectorAll('.info-icon-wrapper').forEach(wrapper => {
+            const wrappers = document.querySelectorAll('.info-icon-wrapper');
+            wrappers.forEach(wrapper => {
                 if (!wrapper.contains(e.target)) {
                     wrapper.classList.remove('show-tooltip');
                 }
