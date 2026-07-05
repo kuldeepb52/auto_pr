@@ -966,7 +966,9 @@
                 'conscurrfin year'
             ],
             'currfinyear': ['currfinyear', 'curr fin year', 'curr fin yr', 'cons curr fin year', 'conscurrfin year'],
-            'plant': ['plant', 'plant code', 'plant no', 'plant number']
+            'plant': ['plant', 'plant code', 'plant no', 'plant number'],
+            // added to resolve 'Short Text' column with space
+            'shorttext': ['shorttext', 'short text', 'short text', 'short description', 'short desc', 'shortdesc']
         };
 
         const ALIAS_TO_KEY = {};
@@ -1078,8 +1080,9 @@
             const availableHeaders = Object.keys(sampleRow);
             let expectedKeys = [];
             if (fileType === 'ZMM') {
+                // removed 'safetystock' from expected keys – it is not used directly
                 expectedKeys = ['material', 'description', 'stock', 'doc.type', 'doc.detail', 'req.date', 'quantity',
-                    'safetystock', 'yr-4', 'yr-3', 'yr-2', 'prevfn', 'currfin.year', 'currfinyear'
+                    'yr-4', 'yr-3', 'yr-2', 'prevfn', 'currfin.year', 'currfinyear'
                 ];
             } else if (fileType === 'ME2M') {
                 expectedKeys = ['material', 'shorttext', 'orderunit', 'purchasingdocument', 'netprice', 'documentdate',
@@ -1237,7 +1240,7 @@
             getMaterialCode: (m) => m,
             getOldMaterialCode: () => '',
             getItemDescription: (zmmRecords, me2mRecords) => {
-                if (!zmmRecords || zmmRecords.length === 0) return '[DESCRIPTION NOT FOUND]';
+                if (!zmmRecords || zmmRecords.length === 0) return 'NOT FOUND IN INPUT FILES';
                 return String(getValueByFlexibleKey(zmmRecords[0], 'description', 'ZMM')).trim();
             },
             getPopulation: () => 'INDENTOR TO FILL',
@@ -1394,7 +1397,7 @@
                     const desc = String(getValueByFlexibleKey(zmmRecords[0], 'description', 'ZMM')).trim();
                     if (desc) return desc;
                 }
-                return 'No Records Found';
+                return 'NOT FOUND IN INPUT FILES';
             },
             getPopulation: () => 'INDENTOR TO FILL',
             getQtyRequested: () => 'INDENTOR TO FILL',
