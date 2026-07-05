@@ -980,6 +980,53 @@
         }
 
         // ================================================================
+        //  SMART HEADER ROW DETECTOR
+        // ================================================================
+
+        function findHeaderRow(worksheet) {
+            // Get the total range of the sheet
+            const range = XLSX.utils.decode_range(worksheet['!ref']);
+            const maxRow = Math.min(range.e.r, 20); // Only scan the first 20 rows to save time
+
+            // Keywords that are highly likely to appear in a header row
+            const keywords = [
+                'material', 'mat', 'description', 'desc', 'short text',
+                'po', 'purchase', 'plant', 'qty', 'quantity', 'item',
+                'doc', 'order', 'unit', 'stock', 'price', 'net'
+            ];
+
+            for (let r = 0; r <= maxRow; r++) {
+                let matchCount = 0;
+                // Check the first 5 columns (A to E) in this row
+                for (let c = 0; c < 5; c++) {
+                    const cellAddress = XLSX.utils.encode_cell({ r: r, c: c });
+                    const cell = worksheet[cellAddress];
+                    if (cell && cell.v) {
+                        const cellValue = String(cell.v).toLowerCase().trim();
+                        // Check if this cell contains any of our keywords
+                        for (const keyword of keywords) {
+                            if (cellValue.includes(keyword)) {
+                                matchCount++;
+                                break; // Count this cell only once
+                            }
+                        }
+                    }
+                }
+
+                // If we found keywords in at least 2 out of the first 5 columns,
+                // we are highly confident this is the header row.
+                if (matchCount >= 2) {
+                    console.log(`Header row auto-detected at row ${r + 1}`);
+                    return r; // Return the 0-indexed row number
+                }
+            }
+
+            // If no headers found, default to Row 1 (index 0)
+            console.warn('Could not auto-detect headers. Defaulting to Row 1.');
+            return 0;
+        }
+
+        // ================================================================
         //  EXECUTION LOG
         // ================================================================
 
@@ -1817,7 +1864,15 @@
                         const data = new Uint8Array(e.target.result);
                         const workbook = XLSX.read(data, { type: 'array' });
                         const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-                        const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+                        // --- NEW: Auto-detect header row ---
+                        const headerRowIndex = findHeaderRow(worksheet);
+                        // ------------------------------------
+
+                        const json = XLSX.utils.sheet_to_json(worksheet, {
+                            range: headerRowIndex,  // start reading from the detected header row
+                            defval: ""
+                        });
                         resolve(json);
                     } catch (err) {
                         reject(err);
