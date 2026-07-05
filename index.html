@@ -23,10 +23,8 @@
             --ink: #1B1F27;
             --ink-soft: #5B6270;
             --ink-faint: #8B8F98;
-            /* --- LINES MADE DARKER --- */
-            --rule: #B0B0B0;        /* was #DBDAD3 */
-            --rule-strong: #888888; /* was #B8B6AC */
-            /* -------------------------- */
+            --rule: #B0B0B0;
+            --rule-strong: #888888;
             --accent: #16424D;
             --accent-deep: #0D2C34;
             --accent-soft: #E7EEEE;
@@ -737,7 +735,6 @@
             .log-panel .log-body {
                 max-height: 140px;
             }
-            /* Stack the options grid on small screens */
             .options-grid {
                 grid-template-columns: 1fr;
                 gap: 1rem;
@@ -748,6 +745,34 @@
             .options-grid .form-group .inline-controls input[type="number"] {
                 width: 100%;
             }
+        }
+
+        .file-upload-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.75rem;
+            margin-top: 0.5rem;
+        }
+        .file-upload-row input[type="file"] {
+            flex: 1 1 auto;
+            min-width: 200px;
+        }
+        .file-upload-row .file-name {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.78rem;
+            color: var(--ink);
+            background: var(--paper);
+            padding: 0.2rem 0.6rem;
+            border: 1px solid var(--rule);
+        }
+        .file-upload-row .file-name.empty {
+            color: var(--ink-faint);
+        }
+        /* Mandatory asterisk styling */
+        .mandatory-star {
+            color: red;
+            margin-left: 2px;
         }
     </style>
 </head>
@@ -816,12 +841,12 @@
                         <span class="panel-index mono">01</span>
                         <h2>Upload SAP data</h2>
                     </div>
-                    <p class="panel-desc">Provide the raw SAP export files used to build the material database for this indent.</p>
+                    <p class="panel-desc">Provide the raw SAP T-codes (ZMMMATHIST &amp; ME2M) export files (.xlsx).</p>
 
                     <!-- ZMM -->
                     <div class="field">
                         <div class="field-top">
-                            <span class="field-label">ZMMMATHIST</span>
+                            <span class="field-label">ZMMMATHIST <span class="mandatory-star">*</span></span>
                         </div>
                         <div class="file-row">
                             <input type="file" id="zmmFile" accept=".xlsx,.xls,.csv" />
@@ -832,7 +857,7 @@
                     <!-- ME2M -->
                     <div class="field">
                         <div class="field-top">
-                            <span class="field-label">ME2M</span>
+                            <span class="field-label">ME2M <span class="mandatory-star">*</span></span>
                         </div>
                         <div class="file-row">
                             <input type="file" id="me2mFile" accept=".xlsx,.xls,.csv" />
@@ -840,7 +865,7 @@
                         </div>
                     </div>
 
-                    <button id="scanBtn" class="btn btn-primary">Scan files and build database</button>
+                    <button id="scanBtn" class="btn btn-primary">Scan files and build Material code database</button>
                 </section>
 
                 <!-- PANEL 2: GENERATE -->
@@ -858,17 +883,24 @@
                         <div id="materialTagsContainer" class="material-tags"></div>
                     </div>
 
+                    <!-- Additional material codes: textarea + file upload -->
                     <div class="form-group">
                         <label for="anchorList">Additional material codes</label>
                         <textarea id="anchorList" rows="3" placeholder="One per line or comma-separated, e.g.&#10;M123456789&#10;M987654321"></textarea>
-                        <span class="help-text">These are merged with the materials found in SAP. Leave empty to use only scanned materials.</span>
+                        <span class="help-text">These are merged with the unique materials codes found in input files scan. Leave empty to use only scanned materials.</span>
+
+                        <!-- Upload option -->
+                        <div class="file-upload-row">
+                            <span style="font-size:0.85rem; color:var(--ink-soft);">Or upload an Excel file:</span>
+                            <input type="file" id="additionalMaterialFile" accept=".xlsx,.xls,.csv" />
+                            <span class="file-name empty" id="additionalFileName">No file selected</span>
+                        </div>
+                        <span class="help-text">The file should contain material codes in the first column (starting from the first row). The textarea above will be populated automatically.</span>
                     </div>
 
                     <hr class="divider" />
 
-                    <!-- ============================================================
-                         Options Grid – updated Normal life dropdown labels
-                         ============================================================ -->
+                    <!-- Options Grid – Failure rate, Normal life, Plant Code -->
                     <div class="options-grid">
 
                         <!-- Failure Rate -->
@@ -897,7 +929,7 @@
 
                         <!-- Plant Code -->
                         <div class="form-group">
-                            <label for="plantCode">Plant Code</label>
+                            <label for="plantCode">Plant Code <span class="mandatory-star">*</span></label>
                             <input type="text" id="plantCode" value="1018" placeholder="e.g. 1018" />
                         </div>
 
@@ -905,8 +937,8 @@
                     <!-- end options-grid -->
 
                     <div class="action-row">
-                        <button id="genA" class="btn btn-primary" disabled>Download Annexure A</button>
-                        <button id="genB" class="btn btn-primary" disabled>Download Annexure B</button>
+                        <button id="genA" class="btn btn-primary" disabled>Download Estimation Sheet</button>
+                        <button id="genB" class="btn btn-primary" disabled>Download Procurement Justification Sheet</button>
                     </div>
                     <div id="genStatus" class="alert info" style="display:none;">
                         <span>Awaiting scan completion</span>
@@ -1948,6 +1980,51 @@
             ExecutionLog.info('Log cleared.');
         });
 
+        // ---- Additional material file upload ----
+        document.getElementById('additionalMaterialFile').addEventListener('change', function(e) {
+            const file = this.files[0];
+            const nameDisplay = document.getElementById('additionalFileName');
+            if (!file) {
+                nameDisplay.textContent = 'No file selected';
+                nameDisplay.classList.add('empty');
+                return;
+            }
+            nameDisplay.textContent = file.name;
+            nameDisplay.classList.remove('empty');
+
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                try {
+                    const data = new Uint8Array(ev.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                    // Read first column from the first row onward (no header detection)
+                    const range = XLSX.utils.decode_range(worksheet['!ref']);
+                    const codes = [];
+                    for (let row = range.s.r; row <= range.e.r; row++) {
+                        const cell = worksheet[XLSX.utils.encode_cell({ r: row, c: 0 })];
+                        if (cell && cell.v !== undefined && cell.v !== null) {
+                            const val = String(cell.v).trim();
+                            if (val !== '') codes.push(val);
+                        }
+                    }
+                    if (codes.length === 0) {
+                        ExecutionLog.warning('No material codes found in the file.');
+                        return;
+                    }
+                    const textarea = document.getElementById('anchorList');
+                    textarea.value = codes.join('\n');
+                    ExecutionLog.success(`Loaded ${codes.length} material codes from "${file.name}".`);
+                } catch (err) {
+                    ExecutionLog.error(`Failed to parse file: ${err.message}`);
+                }
+            };
+            reader.onerror = function() {
+                ExecutionLog.error('Error reading file.');
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
         // ---- Scan ----
         document.getElementById('scanBtn').addEventListener('click', async () => {
             const zmmFile = document.getElementById('zmmFile').files[0];
@@ -2028,7 +2105,7 @@
                 ExecutionLog.error(`Scan failed: ${error.message || 'Unknown error'}`);
             } finally {
                 btn.disabled = false;
-                btn.textContent = 'Scan files and build database';
+                btn.textContent = 'Scan files and build Material code database';
             }
         });
 
@@ -2053,7 +2130,7 @@
             selectedPlant = document.getElementById('plantCode').value.trim();
         }
 
-        // ---- Generate A ----
+        // ---- Generate A (Estimation Sheet) ----
         document.getElementById('genA').addEventListener('click', async () => {
             if (!scanComplete) {
                 document.getElementById('genStatus').style.display = 'block';
@@ -2073,7 +2150,7 @@
                 statusDiv.style.display = 'block';
                 statusDiv.className = 'alert error';
                 statusDiv.textContent = 'Error: No material codes found.';
-                ExecutionLog.error('No material codes found. Cannot generate Annexure A.');
+                ExecutionLog.error('No material codes found. Cannot generate Estimation Sheet.');
                 return;
             }
 
@@ -2081,27 +2158,27 @@
             btn.textContent = 'Generating...';
             statusDiv.style.display = 'block';
             statusDiv.className = 'alert info';
-            statusDiv.textContent = 'Preparing Annexure A...';
-            ExecutionLog.info(`Generating Annexure A for ${finalMasterList.length} items…`);
+            statusDiv.textContent = 'Preparing Estimation Sheet...';
+            ExecutionLog.info(`Generating Estimation Sheet for ${finalMasterList.length} items…`);
 
             try {
                 const dataA = generateAnnexureAWorkbook(finalMasterList, parsedZmmData, parsedMe2mData);
-                await exportAnnexure(dataA, 'ESTIMATION', 'AnnexureA_AUTO_PR.xlsx');
+                await exportAnnexure(dataA, 'ESTIMATION', 'AnnexureA_EstimationSheet_AUTO_PR.xlsx');
                 statusDiv.className = 'alert success';
-                statusDiv.textContent = `Annexure A downloaded for ${finalMasterList.length} items.`;
-                ExecutionLog.success(`Annexure A downloaded — ${finalMasterList.length} items.`);
+                statusDiv.textContent = `Estimation Sheet downloaded for ${finalMasterList.length} items.`;
+                ExecutionLog.success(`Estimation Sheet downloaded — ${finalMasterList.length} items.`);
             } catch (error) {
                 console.error(error);
                 statusDiv.className = 'alert error';
-                statusDiv.textContent = 'Error generating Annexure A.';
-                ExecutionLog.error(`Annexure A generation failed: ${error.message || 'Unknown error'}`);
+                statusDiv.textContent = 'Error generating Estimation Sheet.';
+                ExecutionLog.error(`Estimation Sheet generation failed: ${error.message || 'Unknown error'}`);
             } finally {
                 btn.disabled = false;
-                btn.textContent = 'Download Annexure A';
+                btn.textContent = 'Download Estimation Sheet';
             }
         });
 
-        // ---- Generate B ----
+        // ---- Generate B (Procurement Justification Sheet) ----
         document.getElementById('genB').addEventListener('click', async () => {
             if (!scanComplete) {
                 document.getElementById('genStatus').style.display = 'block';
@@ -2121,7 +2198,7 @@
                 statusDiv.style.display = 'block';
                 statusDiv.className = 'alert error';
                 statusDiv.textContent = 'Error: No material codes found.';
-                ExecutionLog.error('No material codes found. Cannot generate Annexure B.');
+                ExecutionLog.error('No material codes found. Cannot generate Procurement Justification Sheet.');
                 return;
             }
 
@@ -2129,23 +2206,23 @@
             btn.textContent = 'Generating...';
             statusDiv.style.display = 'block';
             statusDiv.className = 'alert info';
-            statusDiv.textContent = 'Preparing Annexure B...';
-            ExecutionLog.info(`Generating Annexure B for ${finalMasterList.length} items…`);
+            statusDiv.textContent = 'Preparing Procurement Justification Sheet...';
+            ExecutionLog.info(`Generating Procurement Justification Sheet for ${finalMasterList.length} items…`);
 
             try {
                 const dataB = generateAnnexureBWorkbook(finalMasterList, parsedZmmData, parsedMe2mData);
-                await exportAnnexure(dataB, 'JUSTIFICATION', 'AnnexureB_AUTO_PR.xlsx');
+                await exportAnnexure(dataB, 'JUSTIFICATION', 'AnnexureB_ProcurementJustificationSheet_AUTO_PR.xlsx');
                 statusDiv.className = 'alert success';
-                statusDiv.textContent = `Annexure B downloaded for ${finalMasterList.length} items.`;
-                ExecutionLog.success(`Annexure B downloaded — ${finalMasterList.length} items.`);
+                statusDiv.textContent = `Procurement Justification Sheet downloaded for ${finalMasterList.length} items.`;
+                ExecutionLog.success(`Procurement Justification Sheet downloaded — ${finalMasterList.length} items.`);
             } catch (error) {
                 console.error(error);
                 statusDiv.className = 'alert error';
-                statusDiv.textContent = 'Error generating Annexure B.';
-                ExecutionLog.error(`Annexure B generation failed: ${error.message || 'Unknown error'}`);
+                statusDiv.textContent = 'Error generating Procurement Justification Sheet.';
+                ExecutionLog.error(`Procurement Justification Sheet generation failed: ${error.message || 'Unknown error'}`);
             } finally {
                 btn.disabled = false;
-                btn.textContent = 'Download Annexure B';
+                btn.textContent = 'Download Procurement Justification Sheet';
             }
         });
 
