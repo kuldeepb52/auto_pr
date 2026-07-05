@@ -1394,10 +1394,8 @@
                 }
                 return 'No Records Found';
             },
-            // --- UPDATED: Population and Qty requested are now fixed ---
-            getPopulation: () => 'INDENTOR TO FILL',          // Column D
-            getQtyRequested: () => 'INDENTOR TO FILL',        // Column F
-            // ------------------------------------------------------------
+            getPopulation: () => 'INDENTOR TO FILL',
+            getQtyRequested: () => 'INDENTOR TO FILL',
             getQtyInStock: (zmmRecords) => {
                 if (!zmmRecords || zmmRecords.length === 0) return 0;
                 return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'stock', 'ZMM'));
@@ -1540,9 +1538,9 @@
                     AnnexureA_Rules.getSerialNumber(idx + 1),
                     AnnexureA_Rules.getMaterialCode(materialCode),
                     AnnexureA_Rules.getItemDescription(zmmRecords, me2mRecords),
-                    AnnexureA_Rules.getPopulation(),   // Column D
+                    AnnexureA_Rules.getPopulation(),
                     AnnexureA_Rules.getQtyInStock(zmmRecords),
-                    AnnexureA_Rules.getQtyRequested(), // Column F
+                    AnnexureA_Rules.getQtyRequested(),
                     AnnexureA_Rules.getUnitOfMeasure(me2mRecords),
                     AnnexureA_Rules.getLastPoNo(me2mRecords),
                     AnnexureA_Rules.getLastPoDate(me2mRecords),
@@ -1594,7 +1592,7 @@
         }
 
         // ================================================================
-        //  EXCEL EXPORT
+        //  EXCEL EXPORT (UPDATED: column L width increased to 35)
         // ================================================================
 
         async function exportAnnexure(dataArray, sheetName, fileName) {
@@ -1607,6 +1605,8 @@
 
             if (sheetName === 'ESTIMATION') {
                 autoFitColumns(sheet, 8);
+                // Override column L width to 35 for the header
+                sheet.getColumn('L').width = 35;
             } else if (sheetName === 'JUSTIFICATION') {
                 autoFitColumns(sheet, 7);
                 sheet.getColumn('A').width = 8;
