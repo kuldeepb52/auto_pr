@@ -798,7 +798,7 @@
                             <span class="num">1</span>
                             <span class="step-text">
                                 <div class="step-name">Upload</div>
-                                <div class="step-sub">Add SAP export files</div>
+                                <div class="step-sub">Add SAP T‑Codes files</div>
                             </span>
                         </button>
                     </li>
@@ -807,7 +807,7 @@
                             <span class="num">2</span>
                             <span class="step-text">
                                 <div class="step-name">Scan</div>
-                                <div class="step-sub">Build the material database</div>
+                                <div class="step-sub">Build material database</div>
                             </span>
                         </button>
                     </li>
@@ -816,7 +816,7 @@
                             <span class="num">3</span>
                             <span class="step-text">
                                 <div class="step-name">Generate</div>
-                                <div class="step-sub">Download Annexure A or B</div>
+                                <div class="step-sub">Download annexures</div>
                             </span>
                         </button>
                     </li>
@@ -835,13 +835,13 @@
             <!-- MAIN COLUMN -->
             <main class="main">
 
-                <!-- PANEL 1: UPLOAD -->
+                <!-- PANEL 1: UPLOAD SAP T-CODES DATA -->
                 <section class="panel" id="uploadSection">
                     <div class="panel-head">
                         <span class="panel-index mono">01</span>
-                        <h2>Upload SAP data</h2>
+                        <h2>Upload SAP T‑Codes data</h2>
                     </div>
-                    <p class="panel-desc">Provide the raw SAP T-codes (ZMMMATHIST &amp; ME2M) export files (.xlsx).</p>
+                    <p class="panel-desc">Provide the raw SAP T‑codes (ZMMMATHIST &amp; ME2M) export files (.xlsx).</p>
 
                     <!-- ZMM -->
                     <div class="field">
@@ -865,16 +865,16 @@
                         </div>
                     </div>
 
-                    <button id="scanBtn" class="btn btn-primary">Scan files and build Material code database</button>
+                    <button id="scanBtn" class="btn btn-primary">Scan input files</button>
                 </section>
 
-                <!-- PANEL 2: GENERATE -->
-                <section class="panel" id="generateSection">
+                <!-- PANEL 2: SCAN AND BUILD MATERIAL CODES DATABASE -->
+                <section class="panel" id="scanSection">
                     <div class="panel-head">
                         <span class="panel-index mono">02</span>
-                        <h2>Generate annexure</h2>
+                        <h2>Scan and build material codes database</h2>
                     </div>
-                    <p class="panel-desc">Once the scan is complete, review the material register, set the optional defaults below, and download the annexure you need.</p>
+                    <p class="panel-desc">Review the unique material codes found in the uploaded files. You may add extra codes manually or via an Excel file.</p>
 
                     <div class="register-box">
                         <div class="register-box-head">
@@ -897,10 +897,16 @@
                         </div>
                         <span class="help-text">The file should contain material codes in the first column (starting from the first row). The textarea above will be populated automatically.</span>
                     </div>
+                </section>
 
-                    <hr class="divider" />
+                <!-- PANEL 3: GENERATE ANNEXURES -->
+                <section class="panel" id="generateSection">
+                    <div class="panel-head">
+                        <span class="panel-index mono">03</span>
+                        <h2>Generate Annexures</h2>
+                    </div>
+                    <p class="panel-desc">Set the optional defaults below, then download the required annexure.</p>
 
-                    <!-- Options Grid – Failure rate, Normal life, Plant Code -->
                     <div class="options-grid">
 
                         <!-- Failure Rate -->
@@ -2098,14 +2104,15 @@
                 document.getElementById('genStatus').style.display = 'none';
                 ExecutionLog.info('Annexure generation buttons enabled.');
 
-                updateNav(3);
+                // Navigate to step 2 after scan (the scan results panel)
+                updateNav(2);
 
             } catch (error) {
                 console.error(error);
                 ExecutionLog.error(`Scan failed: ${error.message || 'Unknown error'}`);
             } finally {
                 btn.disabled = false;
-                btn.textContent = 'Scan files and build Material code database';
+                btn.textContent = 'Scan input files';
             }
         });
 
@@ -2231,7 +2238,7 @@
             document.getElementById('uploadSection').scrollIntoView({ behavior: 'smooth' });
         });
         document.getElementById('navScan').addEventListener('click', () => {
-            document.getElementById('uploadSection').scrollIntoView({ behavior: 'smooth' });
+            document.getElementById('scanSection').scrollIntoView({ behavior: 'smooth' });
         });
         document.getElementById('navGenerate').addEventListener('click', () => {
             document.getElementById('generateSection').scrollIntoView({ behavior: 'smooth' });
