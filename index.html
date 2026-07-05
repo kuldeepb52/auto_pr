@@ -74,6 +74,15 @@
             font-size: 2.4rem;
             letter-spacing: -0.01em;
             color: var(--ink);
+            margin-bottom: 0.2rem;
+        }
+        .masthead .title-block .subtitle {
+            font-family: 'IBM Plex Sans', sans-serif;
+            font-size: 1rem;
+            font-weight: 400;
+            color: var(--ink-soft);
+            letter-spacing: 0.02em;
+            margin-top: 0;
         }
 
         .layout {
@@ -238,7 +247,78 @@
             font-size: 0.88rem;
             color: var(--ink-soft);
             margin: 0.6rem 0 1.6rem;
-            /* removed max-width: 56ch so it occupies the full line */
+        }
+
+        /* Info icon with custom tooltip */
+        .info-icon-wrapper {
+            display: inline-flex;
+            align-items: center;
+            position: relative;
+            margin-left: 0.4rem;
+        }
+        .info-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--accent-soft);
+            color: var(--accent);
+            font-weight: 700;
+            font-size: 0.7rem;
+            font-family: 'IBM Plex Sans', sans-serif;
+            cursor: help;
+            border: 1px solid var(--accent);
+            transition: background 0.15s, color 0.15s;
+            user-select: none;
+        }
+        .info-icon:hover {
+            background: var(--accent);
+            color: #fff;
+        }
+        .info-icon.active {
+            background: var(--accent);
+            color: #fff;
+        }
+        .info-tooltip {
+            display: none;
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            min-width: 280px;
+            max-width: 420px;
+            background: var(--surface);
+            border: 1px solid var(--rule-strong);
+            border-radius: 4px;
+            padding: 0.7rem 0.9rem;
+            font-size: 0.78rem;
+            color: var(--ink);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+            z-index: 100;
+            line-height: 1.5;
+            font-weight: 400;
+            font-family: 'IBM Plex Sans', sans-serif;
+        }
+        .info-tooltip::before {
+            content: '';
+            position: absolute;
+            bottom: 100%;
+            left: 10px;
+            border: 6px solid transparent;
+            border-bottom-color: var(--rule-strong);
+        }
+        .info-tooltip::after {
+            content: '';
+            position: absolute;
+            bottom: calc(100% - 1px);
+            left: 11px;
+            border: 5px solid transparent;
+            border-bottom-color: var(--surface);
+        }
+        .info-icon-wrapper:hover .info-tooltip,
+        .info-icon-wrapper.show-tooltip .info-tooltip {
+            display: block;
         }
 
         .field {
@@ -426,7 +506,7 @@
             margin-bottom: 1.6rem;
         }
         .form-group label {
-            display: block;
+            display: inline-block;
             font-weight: 600;
             font-size: 0.9rem;
             color: var(--ink);
@@ -784,6 +864,7 @@
         <div class="masthead">
             <div class="title-block">
                 <h1>AUTO_PR</h1>
+                <p class="subtitle">Automatically builds Estimation and Procurement Justification Sheets for PR</p>
             </div>
         </div>
 
@@ -874,8 +955,8 @@
                         <span class="panel-index mono">02</span>
                         <h2>Scan and build material codes database</h2>
                     </div>
-                    <!-- Description now spans the full width -->
-                    <p class="panel-desc">The unique material codes identified from the uploaded files are listed below. To add missing codes or input a complete master list, simply copy (Ctrl+C) the data from Excel and paste (Ctrl+V) it into the text box below, or upload a supplementary Excel file. The system automatically compares the input against the existing data, filters out duplicates, and appends only the new codes to generate the final annexures.</p>
+                    <!-- Shortened description -->
+                    <p class="panel-desc">The unique material codes identified from the uploaded files are listed below.</p>
 
                     <div class="register-box">
                         <div class="register-box-head">
@@ -886,19 +967,33 @@
 
                     <!-- Additional material codes: textarea + file upload -->
                     <div class="form-group">
-                        <label for="anchorList">Additional material codes</label>
+                        <label for="anchorList">
+                            Add additional material codes
+                            <span class="info-icon-wrapper" id="infoIconWrapper">
+                                <span class="info-icon" id="infoIcon">i</span>
+                                <span class="info-tooltip" id="infoTooltip">
+                                    To add missing codes or input a complete master list, simply copy (Ctrl+C) the data from Excel and paste (Ctrl+V) it into the text box below, or upload a supplementary Excel file. The system automatically compares the input against the existing data, filters out duplicates, and appends only the new codes to generate the final annexures.
+                                </span>
+                            </span>
+                        </label>
                         <textarea id="anchorList" rows="3" placeholder="One per line or comma-separated, e.g.&#10;M123456789&#10;M987654321"></textarea>
-                        <!-- Removed "Leave empty to use only scanned materials." -->
-                        <span class="help-text">These are merged with the unique materials codes found in input files scan.</span>
+                        <!-- Removed "These are merged with the unique materials codes found in input files scan." -->
 
                         <!-- Upload option -->
                         <div class="file-upload-row">
-                            <span style="font-size:0.85rem; color:var(--ink-soft);">Or upload an Excel file:</span>
+                            <span style="font-size:0.85rem; color:var(--ink-soft); display:inline-flex; align-items:center; gap:0.2rem;">
+                                Or upload an Excel file:
+                                <span class="info-icon-wrapper" id="uploadInfoWrapper">
+                                    <span class="info-icon" id="uploadInfoIcon">i</span>
+                                    <span class="info-tooltip" id="uploadInfoTooltip">
+                                        The file should contain material codes in the first column (starting from the first row).
+                                    </span>
+                                </span>
+                            </span>
                             <input type="file" id="additionalMaterialFile" accept=".xlsx,.xls,.csv" />
                             <span class="file-name empty" id="additionalFileName">No file selected</span>
                         </div>
-                        <!-- Removed "The textarea above will be populated automatically." -->
-                        <span class="help-text">The file should contain material codes in the first column (starting from the first row).</span>
+                        <!-- Removed "The file should contain material codes in the first column (starting from the first row)." -->
                     </div>
                 </section>
 
@@ -958,7 +1053,10 @@
                 <div class="colophon">
                     <span>DESIGNED AND BUILT BY KULDEEP KUMAR</span>
                     <span>CONTACT NUMBER 933999565</span>
-                    <span>KULDEEPB52@GMAIL.COM</span>
+                    <span>
+                        KULDEEPB52@GMAIL.COM<br />
+                        KULDEEPKUMAR@NTPC.CO.IN
+                    </span>
                 </div>
 
             </main>
@@ -1989,6 +2087,26 @@
             ColumnLog.clear();
             _loggedKeys.clear();
             ExecutionLog.info('Log cleared.');
+        });
+
+        // ---- Info icon click toggles tooltip ----
+        // For the main info icon
+        document.getElementById('infoIconWrapper').addEventListener('click', function(e) {
+            e.stopPropagation();
+            this.classList.toggle('show-tooltip');
+        });
+        // For the upload info icon
+        document.getElementById('uploadInfoWrapper').addEventListener('click', function(e) {
+            e.stopPropagation();
+            this.classList.toggle('show-tooltip');
+        });
+        // Click anywhere else closes all tooltips
+        document.addEventListener('click', function(e) {
+            document.querySelectorAll('.info-icon-wrapper').forEach(wrapper => {
+                if (!wrapper.contains(e.target)) {
+                    wrapper.classList.remove('show-tooltip');
+                }
+            });
         });
 
         // ---- Additional material file upload ----
