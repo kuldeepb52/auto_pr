@@ -1227,7 +1227,7 @@
         let selectedPlant = '1018'; // default
 
         // ================================================================
-        //  ANNEXURE B RULES (UPDATED: columns E & F = "INDENTOR TO FILL")
+        //  ANNEXURE B RULES
         // ================================================================
 
         const AnnexureB_Rules = {
@@ -1238,10 +1238,8 @@
                 if (!zmmRecords || zmmRecords.length === 0) return '[DESCRIPTION NOT FOUND]';
                 return String(getValueByFlexibleKey(zmmRecords[0], 'description', 'ZMM')).trim();
             },
-            // --- NEW: population and proposed quantity are now fixed ---
             getPopulation: () => 'INDENTOR TO FILL',
             getQtyProposed: () => 'INDENTOR TO FILL',
-            // -------------------------------------------------------------
             getQtyInStock: (zmmRecords) => {
                 if (!zmmRecords || zmmRecords.length === 0) return 0;
                 return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'stock', 'ZMM'));
@@ -1252,7 +1250,7 @@
                     const docType = String(getValueByFlexibleKey(row, 'doc.type', 'ZMM')).trim().toLowerCase();
                     if (docType.includes('safest')) {
                         const qty = parseSapNumeric(getValueByFlexibleKey(row, 'quantity', 'ZMM'));
-                        return qty;
+                        return Math.abs(qty);
                     }
                 }
                 return '';
@@ -1335,8 +1333,6 @@
                 return prRows.reduce((sum, row) =>
                     sum + parseSapNumeric(getValueByFlexibleKey(row, 'quantity', 'ZMM')), 0);
             },
-
-            // Plant‑filtered columns U & V (unchanged)
             getLastPoNoDate: (me2mRecords) => {
                 if (!me2mRecords || me2mRecords.length === 0) return 'NA';
                 const plantVal = selectedPlant.trim();
@@ -1358,7 +1354,6 @@
                 const docDate = formatSapDate(getValueByFlexibleKey(latest, 'documentdate', 'ME2M'));
                 return (poNumber && docDate) ? `${poNumber} / ${docDate}` : 'NA';
             },
-
             getLastPoItemSlNo: (me2mRecords) => {
                 if (!me2mRecords || me2mRecords.length === 0) return 'NA';
                 const plantVal = selectedPlant.trim();
@@ -1378,12 +1373,11 @@
                 const item = String(getValueByFlexibleKey(latest, 'item', 'ME2M')).trim();
                 return item || 'NA';
             },
-
             getJustification: () => 'INDENTOR TO FILL'
         };
 
         // ================================================================
-        //  ANNEXURE A RULES (unchanged)
+        //  ANNEXURE A RULES (UPDATED: columns D & F = "INDENTOR TO FILL")
         // ================================================================
 
         const AnnexureA_Rules = {
@@ -1400,12 +1394,14 @@
                 }
                 return 'No Records Found';
             },
-            getPopulation: () => '',
+            // --- UPDATED: Population and Qty requested are now fixed ---
+            getPopulation: () => 'INDENTOR TO FILL',          // Column D
+            getQtyRequested: () => 'INDENTOR TO FILL',        // Column F
+            // ------------------------------------------------------------
             getQtyInStock: (zmmRecords) => {
                 if (!zmmRecords || zmmRecords.length === 0) return 0;
                 return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'stock', 'ZMM'));
             },
-            getQtyRequested: () => '',
             getUnitOfMeasure: (me2mRecords) => {
                 if (!me2mRecords || me2mRecords.length === 0) return 'No Records Found';
                 return String(getValueByFlexibleKey(me2mRecords[0], 'orderunit', 'ME2M')).trim() || 'No Records Found';
@@ -1475,7 +1471,7 @@
         };
 
         // ================================================================
-        //  DATA GENERATION (no plant file)
+        //  DATA GENERATION
         // ================================================================
 
         function buildRegistry(rawData) {
@@ -1502,8 +1498,8 @@
                     AnnexureB_Rules.getMaterialCode(materialCode),
                     AnnexureB_Rules.getOldMaterialCode(),
                     AnnexureB_Rules.getItemDescription(zmmRecords, me2mRecords),
-                    AnnexureB_Rules.getPopulation(), // column E
-                    AnnexureB_Rules.getQtyProposed(), // column F
+                    AnnexureB_Rules.getPopulation(),
+                    AnnexureB_Rules.getQtyProposed(),
                     AnnexureB_Rules.getQtyInStock(zmmRecords),
                     AnnexureB_Rules.getSafetyStock(zmmRecords),
                     AnnexureB_Rules.getMandatorySpareQty(),
@@ -1544,9 +1540,9 @@
                     AnnexureA_Rules.getSerialNumber(idx + 1),
                     AnnexureA_Rules.getMaterialCode(materialCode),
                     AnnexureA_Rules.getItemDescription(zmmRecords, me2mRecords),
-                    AnnexureA_Rules.getPopulation(),
+                    AnnexureA_Rules.getPopulation(),   // Column D
                     AnnexureA_Rules.getQtyInStock(zmmRecords),
-                    AnnexureA_Rules.getQtyRequested(),
+                    AnnexureA_Rules.getQtyRequested(), // Column F
                     AnnexureA_Rules.getUnitOfMeasure(me2mRecords),
                     AnnexureA_Rules.getLastPoNo(me2mRecords),
                     AnnexureA_Rules.getLastPoDate(me2mRecords),
@@ -1571,14 +1567,13 @@
         }
 
         // ================================================================
-        //  AUTO-FIT COLUMN WIDTHS (with overrides for Annexure B)
+        //  AUTO-FIT COLUMN WIDTHS
         // ================================================================
 
         function autoFitColumns(worksheet, dataStartRow, minWidth = 10, maxWidth = 80) {
             const columnCount = worksheet.columns.length;
             const maxLengths = new Array(columnCount).fill(0);
 
-            // Iterate through all rows from the data start row to find the maximum content length
             worksheet.eachRow({ includeEmpty: true }, (row, rowNumber) => {
                 if (rowNumber < dataStartRow) return;
                 row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
@@ -1590,7 +1585,6 @@
                 });
             });
 
-            // Apply the calculated widths
             maxLengths.forEach((maxLength, index) => {
                 const colNumber = index + 1;
                 let width = Math.max(minWidth, maxLength * 1.2 + 2);
@@ -1600,7 +1594,7 @@
         }
 
         // ================================================================
-        //  EXCEL EXPORT (UPDATED with auto-fit and column overrides)
+        //  EXCEL EXPORT
         // ================================================================
 
         async function exportAnnexure(dataArray, sheetName, fileName) {
@@ -1611,18 +1605,13 @@
             const sheet = workbook.addWorksheet(sheetName);
             sheet.addRows(dataArray);
 
-            // Apply auto-fit before heavy formatting
             if (sheetName === 'ESTIMATION') {
                 autoFitColumns(sheet, 8);
             } else if (sheetName === 'JUSTIFICATION') {
                 autoFitColumns(sheet, 7);
-                // --- OVERRIDE: set fixed widths for columns A, B, S ---
-                sheet.getColumn('A').width = 8;   // Sl. No.
-                sheet.getColumn('B').width = 20;  // Material Code
-                sheet.getColumn('S').width = 25;  // PRNo. /Date
-                // Also ensure column U and V remain reasonable (already auto-fitted, but we can optionally set)
-                // sheet.getColumn('U').width = 28; // optional
-                // sheet.getColumn('V').width = 16; // optional
+                sheet.getColumn('A').width = 8;
+                sheet.getColumn('B').width = 20;
+                sheet.getColumn('S').width = 25;
             }
 
             if (sheetName === 'ESTIMATION') {
@@ -1876,7 +1865,6 @@
                     ExecutionLog.info('ME2M not provided. Skipping.');
                 }
 
-                // Analyze column mapping
                 if (parsedZmmData.length > 0) {
                     ExecutionLog.info('Analyzing ZMM column mapping…');
                     analyzeColumnMapping(parsedZmmData, 'ZMM');
