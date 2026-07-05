@@ -238,7 +238,7 @@
             font-size: 0.88rem;
             color: var(--ink-soft);
             margin: 0.6rem 0 1.6rem;
-            max-width: 100%;
+            max-width: 56ch;
         }
 
         .field {
@@ -887,7 +887,7 @@
                     <div class="form-group">
                         <label for="anchorList">Additional material codes</label>
                         <textarea id="anchorList" rows="3" placeholder="One per line or comma-separated, e.g.&#10;M123456789&#10;M987654321"></textarea>
-                        <span class="help-text">Leave empty to use only scanned materials.</span>
+                        <span class="help-text">These are merged with the unique materials codes found in input files scan. Leave empty to use only scanned materials.</span>
 
                         <!-- Upload option -->
                         <div class="file-upload-row">
@@ -895,7 +895,7 @@
                             <input type="file" id="additionalMaterialFile" accept=".xlsx,.xls,.csv" />
                             <span class="file-name empty" id="additionalFileName">No file selected</span>
                         </div>
-                        <span class="help-text">The file should contain material codes in the first column (starting from the first row).</span>
+                        <span class="help-text">The file should contain material codes in the first column (starting from the first row). The textarea above will be populated automatically.</span>
                     </div>
                 </section>
 
@@ -956,7 +956,6 @@
                     <span>DESIGNED AND BUILT BY KULDEEP KUMAR</span>
                     <span>CONTACT NUMBER 933999565</span>
                     <span>KULDEEPB52@GMAIL.COM</span>
-                    <span>KULDEEPKUMAR@NTPC.CO.IN</span>
                 </div>
 
             </main>
