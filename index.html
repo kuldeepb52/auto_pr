@@ -489,6 +489,33 @@
             margin: 1.8rem 0 1.6rem;
         }
 
+        /* ============================================================
+           OPTIONS GRID (side by side)
+           ============================================================ */
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 1.6rem;
+        }
+        .options-grid .form-group {
+            margin-bottom: 0;
+        }
+        .options-grid .form-group label {
+            font-size: 0.85rem;
+        }
+        .options-grid .form-group input,
+        .options-grid .form-group select {
+            width: 100%;
+        }
+        .options-grid .form-group .inline-controls {
+            flex-wrap: nowrap;
+        }
+        .options-grid .form-group .inline-controls input[type="number"] {
+            width: 70px;
+            flex-shrink: 0;
+        }
+
         /* LOG PANEL */
         .log-panel {
             background: var(--surface);
@@ -710,6 +737,17 @@
             .log-panel .log-body {
                 max-height: 140px;
             }
+            /* Stack the options grid on small screens */
+            .options-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+            .options-grid .form-group .inline-controls {
+                flex-wrap: wrap;
+            }
+            .options-grid .form-group .inline-controls input[type="number"] {
+                width: 100%;
+            }
         }
     </style>
 </head>
@@ -828,36 +866,43 @@
 
                     <hr class="divider" />
 
-                    <!-- Failure Rate selector -->
-                    <div class="form-group">
-                        <label for="failureRate">Failure rate — Annexure B</label>
-                        <div class="inline-controls">
-                            <select id="failureRate">
-                                <option value="Custom">Custom (leave blank)</option>
-                                <option value="Normal">Normal</option>
-                                <option value="Frequent">Frequent</option>
-                            </select>
-                        </div>
-                    </div>
+                    <!-- ============================================================
+                         Options Grid – updated Normal life dropdown labels
+                         ============================================================ -->
+                    <div class="options-grid">
 
-                    <!-- Normal Life of item selector -->
-                    <div class="form-group">
-                        <label for="normalLifeMode">Normal life of item — Annexure B</label>
-                        <div class="inline-controls">
-                            <select id="normalLifeMode">
-                                <option value="Custom">Custom (leave blank)</option>
-                                <option value="Enter">Enter value</option>
-                            </select>
-                            <input type="number" id="normalLifeValue" placeholder="Years" disabled />
+                        <!-- Failure Rate -->
+                        <div class="form-group">
+                            <label for="failureRate">Failure rate</label>
+                            <div class="inline-controls">
+                                <select id="failureRate">
+                                    <option value="Custom">Leave blank for all</option>
+                                    <option value="Normal">Normal for all</option>
+                                    <option value="Frequent">Frequent for all</option>
+                                </select>
+                            </div>
                         </div>
-                    </div>
 
-                    <!-- Plant Code for Last PO -->
-                    <div class="form-group">
-                        <label for="plantCode">Plant Code for Last PO (Annexure B)</label>
-                        <input type="text" id="plantCode" value="1018" placeholder="e.g. 1018" />
-                        <span class="help-text">Used to filter ME2M records for the latest PO for columns U &amp; V. If no records found for this plant, 'NA' will be shown.</span>
+                        <!-- Normal Life -->
+                        <div class="form-group">
+                            <label for="normalLifeMode">Normal life of item</label>
+                            <div class="inline-controls">
+                                <select id="normalLifeMode">
+                                    <option value="Custom">Leave blank for all</option>
+                                    <option value="Enter">Enter value for all</option>
+                                </select>
+                                <input type="number" id="normalLifeValue" placeholder="Years" disabled />
+                            </div>
+                        </div>
+
+                        <!-- Plant Code -->
+                        <div class="form-group">
+                            <label for="plantCode">Plant Code</label>
+                            <input type="text" id="plantCode" value="1018" placeholder="e.g. 1018" />
+                        </div>
+
                     </div>
+                    <!-- end options-grid -->
 
                     <div class="action-row">
                         <button id="genA" class="btn btn-primary" disabled>Download Annexure A</button>
@@ -967,7 +1012,6 @@
             ],
             'currfinyear': ['currfinyear', 'curr fin year', 'curr fin yr', 'cons curr fin year', 'conscurrfin year'],
             'plant': ['plant', 'plant code', 'plant no', 'plant number'],
-            // added to resolve 'Short Text' column with space
             'shorttext': ['shorttext', 'short text', 'short text', 'short description', 'short desc', 'shortdesc']
         };
 
@@ -984,11 +1028,9 @@
         // ================================================================
 
         function findHeaderRow(worksheet) {
-            // Get the total range of the sheet
             const range = XLSX.utils.decode_range(worksheet['!ref']);
-            const maxRow = Math.min(range.e.r, 20); // Only scan the first 20 rows to save time
+            const maxRow = Math.min(range.e.r, 20);
 
-            // Keywords that are highly likely to appear in a header row
             const keywords = [
                 'material', 'mat', 'description', 'desc', 'short text',
                 'po', 'purchase', 'plant', 'qty', 'quantity', 'item',
@@ -997,31 +1039,24 @@
 
             for (let r = 0; r <= maxRow; r++) {
                 let matchCount = 0;
-                // Check the first 5 columns (A to E) in this row
                 for (let c = 0; c < 5; c++) {
                     const cellAddress = XLSX.utils.encode_cell({ r: r, c: c });
                     const cell = worksheet[cellAddress];
                     if (cell && cell.v) {
                         const cellValue = String(cell.v).toLowerCase().trim();
-                        // Check if this cell contains any of our keywords
                         for (const keyword of keywords) {
                             if (cellValue.includes(keyword)) {
                                 matchCount++;
-                                break; // Count this cell only once
+                                break;
                             }
                         }
                     }
                 }
-
-                // If we found keywords in at least 2 out of the first 5 columns,
-                // we are highly confident this is the header row.
                 if (matchCount >= 2) {
                     console.log(`Header row auto-detected at row ${r + 1}`);
-                    return r; // Return the 0-indexed row number
+                    return r;
                 }
             }
-
-            // If no headers found, default to Row 1 (index 0)
             console.warn('Could not auto-detect headers. Defaulting to Row 1.');
             return 0;
         }
@@ -1127,7 +1162,6 @@
             const availableHeaders = Object.keys(sampleRow);
             let expectedKeys = [];
             if (fileType === 'ZMM') {
-                // removed 'safetystock' from expected keys – it is not used directly
                 expectedKeys = ['material', 'description', 'stock', 'doc.type', 'doc.detail', 'req.date', 'quantity',
                     'yr-4', 'yr-3', 'yr-2', 'prevfn', 'currfin.year', 'currfinyear'
                 ];
@@ -1276,7 +1310,7 @@
         let failureRateMode = 'Custom';
         let normalLifeMode = 'Custom';
         let normalLifeValue = '';
-        let selectedPlant = '1018'; // default
+        let selectedPlant = '1018';
 
         // ================================================================
         //  ANNEXURE B RULES
@@ -1429,7 +1463,7 @@
         };
 
         // ================================================================
-        //  ANNEXURE A RULES (UPDATED: columns D & F = "INDENTOR TO FILL")
+        //  ANNEXURE A RULES
         // ================================================================
 
         const AnnexureA_Rules = {
@@ -1474,7 +1508,7 @@
         };
 
         // ================================================================
-        //  SCHEMAS (unchanged)
+        //  SCHEMAS
         // ================================================================
 
         const SCHEMA_TEMPLATES = {
@@ -1540,7 +1574,6 @@
             const zmmRegistry = buildRegistry(zmmRawData);
             const me2mRegistry = buildRegistry(me2mRawData);
 
-            // Insert current date into Annexure B cell A3
             const today = new Date();
             const dd = String(today.getDate()).padStart(2, '0');
             const mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -1596,7 +1629,6 @@
             const zmmRegistry = buildRegistry(zmmRawData);
             const me2mRegistry = buildRegistry(me2mRawData);
 
-            // Insert current date into Annexure A cell A3
             const today = new Date();
             const dd = String(today.getDate()).padStart(2, '0');
             const mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -1684,7 +1716,6 @@
 
             if (sheetName === 'ESTIMATION') {
                 autoFitColumns(sheet, 8);
-                // Override column L width to 35 for the header
                 sheet.getColumn('L').width = 35;
             } else if (sheetName === 'JUSTIFICATION') {
                 autoFitColumns(sheet, 7);
@@ -1758,7 +1789,6 @@
                 });
                 sheet.getCell(`A${totalRows}`).alignment = { horizontal: 'right', vertical: 'center', wrapText: false };
 
-                // Explicitly apply borders to H2:M5
                 for (let r = 2; r <= 5; r++) {
                     for (let c = 8; c <= 13; c++) {
                         const cell = sheet.getCell(r, c);
@@ -1794,10 +1824,7 @@
 
                 sheet.eachRow((row, rn) => {
                     row.eachCell({ includeEmpty: true }, (cell, cn) => {
-                        // Apply border to EVERY cell in the sheet
                         cell.border = border;
-
-                        // Then apply specific formatting
                         if (rn === 1) {
                             cell.font = { bold: true, name: 'Calibri' };
                             cell.alignment = { horizontal: 'center', vertical: 'top', wrapText: false };
@@ -1835,7 +1862,6 @@
                     });
                 });
 
-                // Wrap text for Q, S, T columns in data rows
                 for (let rn = 7; rn < FOOTER_START; rn++) {
                     ['Q', 'S', 'T'].forEach(col => {
                         sheet.getCell(`${col}${rn}`).alignment = { horizontal: 'center', vertical: 'top', wrapText: true };
@@ -1864,13 +1890,9 @@
                         const data = new Uint8Array(e.target.result);
                         const workbook = XLSX.read(data, { type: 'array' });
                         const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-
-                        // --- NEW: Auto-detect header row ---
                         const headerRowIndex = findHeaderRow(worksheet);
-                        // ------------------------------------
-
                         const json = XLSX.utils.sheet_to_json(worksheet, {
-                            range: headerRowIndex,  // start reading from the detected header row
+                            range: headerRowIndex,
                             defval: ""
                         });
                         resolve(json);
