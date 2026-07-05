@@ -1325,13 +1325,13 @@
                 return formattedPRs.length > 0 ? formattedPRs.join('\n') : 'NA';
             },
             getPipelinePrQty: (zmmRecords) => {
-                if (!zmmRecords || zmmRecords.length === 0) return 0;
+                if (!zmmRecords || zmmRecords.length === 0) return '0';
                 const prRows = zmmRecords.filter(r => {
                     const docType = String(getValueByFlexibleKey(r, 'doc.type', 'ZMM')).trim().toLowerCase();
                     return docType === 'purrqs';
                 });
-                return prRows.reduce((sum, row) =>
-                    sum + parseSapNumeric(getValueByFlexibleKey(row, 'quantity', 'ZMM')), 0);
+                if (prRows.length === 0) return '0';
+                return prRows.map(row => String(parseSapNumeric(getValueByFlexibleKey(row, 'quantity', 'ZMM')))).join('\n');
             },
             getLastPoNoDate: (me2mRecords) => {
                 if (!me2mRecords || me2mRecords.length === 0) return 'NA';
@@ -1488,6 +1488,19 @@
             const zmmRegistry = buildRegistry(zmmRawData);
             const me2mRegistry = buildRegistry(me2mRawData);
 
+            // Insert current date into Annexure B cell A3
+            const today = new Date();
+            const dd = String(today.getDate()).padStart(2, '0');
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const yyyy = today.getFullYear();
+            const currentDate = `${dd}.${mm}.${yyyy}`;
+            const dynamicTopRows = [
+                ['Material Procurement Justification sheet'],
+                ['Procurement of xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'],
+                [`PRNo.xxxxxx / Date:${currentDate}`, '', '', 'Value of  indent in (Rs.): xxxxx/-'],
+                [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, '', '', '', '', 12, 13, 14, 15, 16, 17, 18, 19]
+            ];
+
             const dataRows = masterList.map((materialCode, idx) => {
                 const zmmRecords = zmmRegistry.get(materialCode) || [];
                 const me2mRecords = me2mRegistry.get(materialCode) || [];
@@ -1519,7 +1532,7 @@
             });
 
             return [
-                ...SCHEMA_TEMPLATES.AnnexureB_TopRows,
+                ...dynamicTopRows,
                 SCHEMA_TEMPLATES.AnnexureB_Headers_Row1,
                 SCHEMA_TEMPLATES.AnnexureB_Headers_Row2,
                 ...dataRows,
@@ -1530,6 +1543,20 @@
         function generateAnnexureAWorkbook(masterList, zmmRawData, me2mRawData) {
             const zmmRegistry = buildRegistry(zmmRawData);
             const me2mRegistry = buildRegistry(me2mRawData);
+
+            // Insert current date into Annexure A cell A3
+            const today = new Date();
+            const dd = String(today.getDate()).padStart(2, '0');
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const yyyy = today.getFullYear();
+            const currentDate = `${dd}.${mm}.${yyyy}`;
+            const dynamicTopRows = [
+                ['ANNEXURE-A : Estimation Sheet'],
+                ['XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'],
+                [`PR No. :XXXXXXXXX , Date: ${currentDate}`],
+                ['Estimated Value : Rs. XXXXXXX'],
+                ['PR ECM No. : XXXXXXXXXXXXXXXXXXXXXXX']
+            ];
 
             const dataRows = masterList.map((materialCode, idx) => {
                 const zmmRecords = zmmRegistry.get(materialCode) || [];
@@ -1556,7 +1583,7 @@
             const sumFormula = `=SUM(M${dataStartExcelRow}:M${totalExcelRow - 1})`;
 
             return [
-                ...SCHEMA_TEMPLATES.AnnexureA_TopRows,
+                ...dynamicTopRows,
                 SCHEMA_TEMPLATES.AnnexureA_Headers,
                 [],
                 ...dataRows,
@@ -1592,7 +1619,7 @@
         }
 
         // ================================================================
-        //  EXCEL EXPORT (UPDATED: column L width increased to 35)
+        //  EXCEL EXPORT
         // ================================================================
 
         async function exportAnnexure(dataArray, sheetName, fileName) {
@@ -1679,6 +1706,14 @@
                 });
                 sheet.getCell(`A${totalRows}`).alignment = { horizontal: 'right', vertical: 'center', wrapText: false };
 
+                // Explicitly apply borders to H2:M5
+                for (let r = 2; r <= 5; r++) {
+                    for (let c = 8; c <= 13; c++) {
+                        const cell = sheet.getCell(r, c);
+                        cell.border = border;
+                    }
+                }
+
             } else if (sheetName === 'JUSTIFICATION') {
                 const totalRows = sheet.rowCount;
                 const FOOTER_START = totalRows - 4;
@@ -1707,26 +1742,25 @@
 
                 sheet.eachRow((row, rn) => {
                     row.eachCell({ includeEmpty: true }, (cell, cn) => {
+                        // Apply border to EVERY cell in the sheet
+                        cell.border = border;
+
+                        // Then apply specific formatting
                         if (rn === 1) {
                             cell.font = { bold: true, name: 'Calibri' };
                             cell.alignment = { horizontal: 'center', vertical: 'top', wrapText: false };
-                            cell.border = border;
                         } else if (rn === 2) {
                             cell.font = { bold: true, name: 'Calibri' };
                             cell.alignment = { horizontal: 'center', vertical: 'top', wrapText: false };
-                            cell.border = border;
                         } else if (rn === 3) {
                             cell.font = { bold: true, name: 'Calibri' };
                             cell.alignment = { horizontal: 'left', vertical: 'top', wrapText: false };
-                            cell.border = border;
                         } else if (rn === 4) {
                             cell.font = { bold: true, name: 'Calibri' };
                             cell.alignment = { horizontal: 'center', vertical: 'top', wrapText: false };
-                            cell.border = border;
                         } else if (rn === 5 || rn === 6) {
                             cell.font = { bold: false, name: 'Calibri' };
                             cell.alignment = { horizontal: 'center', vertical: 'center', wrapText: true };
-                            cell.border = border;
                         } else if (rn >= 7 && rn < FOOTER_START) {
                             cell.font = { name: 'Calibri' };
                             let alignment = 'center';
@@ -1734,7 +1768,6 @@
                                 alignment = 'left';
                             }
                             cell.alignment = { horizontal: alignment, vertical: 'center', wrapText: false };
-                            cell.border = border;
                         } else if (rn === FOOTER_START) {
                             cell.font = { bold: true, name: 'Calibri' };
                             cell.alignment = { horizontal: 'left', vertical: 'center', wrapText: false };
@@ -1750,10 +1783,10 @@
                     });
                 });
 
+                // Wrap text for Q, S, T columns in data rows
                 for (let rn = 7; rn < FOOTER_START; rn++) {
-                    ['Q', 'S'].forEach(col => {
-                        sheet.getCell(`${col}${rn}`).alignment = { horizontal: 'center', vertical: 'top',
-                            wrapText: true };
+                    ['Q', 'S', 'T'].forEach(col => {
+                        sheet.getCell(`${col}${rn}`).alignment = { horizontal: 'center', vertical: 'top', wrapText: true };
                     });
                 }
             }
