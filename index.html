@@ -920,7 +920,7 @@
 
                 <div class="register-label">Resources</div>
                 <ul class="resource-list">
-                    <li><a href="#" id="navHowTo" target="_blank">How to use this tool</a></li>
+                    <li><a href="#" id="navHowTo" target="_blank">How to use AUTO_PR</a></li>
                     <li><a href="#" id="navBug">Report a bug</a></li>
                     <li><a href="#" id="navFeedback">Send feedback</a></li>
                 </ul>
@@ -2384,12 +2384,11 @@
             e.preventDefault();
             window.open(HOW_TO_PDF_URL, '_blank');
         });
-        const BUG_EMAIL = 'kulkul@example.com';
-        const BUG_SUBJECT = 'AUTO_PR Bug Report';
-        document.getElementById('navBug').addEventListener('click', (e) => {
-            e.preventDefault();
-            window.location.href = `mailto:${BUG_EMAIL}?subject=${encodeURIComponent(BUG_SUBJECT)}`;
-        });
+const BUG_REPORT_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSdQ1p2cv0VELg2Quf0rRSBHHzoTTRLXuZswyOOtXQFMWU3ZLQ/viewform';   
+document.getElementById('navBug').addEventListener('click', (e) => {
+    e.preventDefault();
+    window.open(BUG_REPORT_URL, '_blank');
+});
         const FEEDBACK_SUBJECT = 'AUTO_PR Feedback';
         document.getElementById('navFeedback').addEventListener('click', (e) => {
             e.preventDefault();
