@@ -1619,20 +1619,46 @@
         //  ANNEXURE A RULES
         // ================================================================
 
-getLastPoNo: (me2mRecords) => {
-    const lpp = getLPP(me2mRecords);
-    if (lpp === 'Beyond 3 Years' || lpp === 'No Records Found') return 'NA';
-    const latestRow = getLatestMe2mRecord(me2mRecords);
-    if (!latestRow) return 'NA';
-    return String(getValueByFlexibleKey(latestRow, 'purchasingdocument', 'ME2M')).trim() || 'NA';
-},
-getLastPoDate: (me2mRecords) => {
-    const lpp = getLPP(me2mRecords);
-    if (lpp === 'Beyond 3 Years' || lpp === 'No Records Found') return 'NA';
-    const latestRow = getLatestMe2mRecord(me2mRecords);
-    if (!latestRow) return 'NA';
-    return formatSapDate(getValueByFlexibleKey(latestRow, 'documentdate', 'ME2M')) || 'NA';
-},
+        const AnnexureA_Rules = {
+            getSerialNumber: (idx) => idx,
+            getMaterialCode: (m) => m,
+            getItemDescription: (zmmRecords, me2mRecords) => {
+                if (me2mRecords && me2mRecords.length > 0) {
+                    const desc = String(getValueByFlexibleKey(me2mRecords[0], 'shorttext', 'ME2M')).trim();
+                    if (desc) return desc;
+                }
+                if (zmmRecords && zmmRecords.length > 0) {
+                    const desc = String(getValueByFlexibleKey(zmmRecords[0], 'description', 'ZMM')).trim();
+                    if (desc) return desc;
+                }
+                return 'NOT FOUND IN INPUT FILES';
+            },
+            getPopulation: () => 'INDENTOR TO FILL',
+            getQtyRequested: () => 'INDENTOR TO FILL',
+            getQtyInStock: (zmmRecords) => {
+                if (!zmmRecords || zmmRecords.length === 0) return 0;
+                return parseSapNumeric(getValueByFlexibleKey(zmmRecords[0], 'stock', 'ZMM'));
+            },
+            getUnitOfMeasure: (me2mRecords) => {
+                if (!me2mRecords || me2mRecords.length === 0) return 'No Records Found';
+                return String(getValueByFlexibleKey(me2mRecords[0], 'orderunit', 'ME2M')).trim() || 'No Records Found';
+            },
+            getLastPoNo: (me2mRecords) => {
+                const latestRow = getLatestMe2mRecord(me2mRecords);
+                if (!latestRow) return 'No Records Found';
+                return String(getValueByFlexibleKey(latestRow, 'purchasingdocument', 'ME2M')).trim() ||
+                    'No Records Found';
+            },
+            getLastPoDate: (me2mRecords) => {
+                const latestRow = getLatestMe2mRecord(me2mRecords);
+                if (!latestRow) return 'No Records Found';
+                return formatSapDate(getValueByFlexibleKey(latestRow, 'documentdate', 'ME2M')) || 'No Records Found';
+            },
+            getLPP: (me2mRecords) => getLPP(me2mRecords),
+            getBudgetaryOffer: (me2mRecords) => getBudgetaryOffer(me2mRecords),
+            getEstimatedRate: (me2mRecords) => getEstimatedRate(me2mRecords),
+            getTotalValue: () => ''
+        };
 
         // ================================================================
         //  SCHEMAS
