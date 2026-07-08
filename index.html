@@ -1643,13 +1643,22 @@
                 if (!me2mRecords || me2mRecords.length === 0) return 'No Records Found';
                 return String(getValueByFlexibleKey(me2mRecords[0], 'orderunit', 'ME2M')).trim() || 'No Records Found';
             },
-            getLastPoNo: (me2mRecords) => {
+           getLastPoNo: (me2mRecords) => {
+    const lppStatus = resolveLPP(me2mRecords);
+    // If no records OR beyond 3 years, return 'NA'
+    if (lppStatus.status !== 'valid') {
+        return 'NA';
+    }
     const latestRow = getLatestMe2mRecord(me2mRecords);
     if (!latestRow) return 'NA';
-    return String(getValueByFlexibleKey(latestRow, 'purchasingdocument', 'ME2M')).trim() ||
-        'NA';
+    return String(getValueByFlexibleKey(latestRow, 'purchasingdocument', 'ME2M')).trim() || 'NA';
 },
-            getLastPoDate: (me2mRecords) => {
+           getLastPoDate: (me2mRecords) => {
+    const lppStatus = resolveLPP(me2mRecords);
+    // If no records OR beyond 3 years, return 'NA'
+    if (lppStatus.status !== 'valid') {
+        return 'NA';
+    }
     const latestRow = getLatestMe2mRecord(me2mRecords);
     if (!latestRow) return 'NA';
     return formatSapDate(getValueByFlexibleKey(latestRow, 'documentdate', 'ME2M')) || 'NA';
