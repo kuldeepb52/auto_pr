@@ -1676,7 +1676,10 @@
     return formatSapDate(getValueByFlexibleKey(latestRow, 'documentdate', 'ME2M')) || 'NA';
 },
             getLPP: (me2mRecords) => getLPP(me2mRecords),
-            getBudgetaryOffer: (me2mRecords) => getBudgetaryOffer(me2mRecords),
+            getSelectedOfferLabel: (me2mRecords) => {
+        const r = resolveLPP(me2mRecords);
+        return (r.status === 'valid') ? 'LPP' : 'Budgetary offer';
+    },
             getEstimatedRate: (me2mRecords) => getEstimatedRate(me2mRecords),
             getTotalValue: () => ''
         };
@@ -1723,7 +1726,7 @@
             AnnexureA_Headers: [
                 'S No.', 'Material', 'Material Description', 'Population',
                 'Stock Qty', 'Qty requested', 'Unit of Measure', 'LPP PO No. / SL No.',
-                'LPP PO date', 'LPP price', 'Budgetary offer', 'Estimated Rate\n(5% yearly escalation)',
+                'LPP PO date', 'LPP price', 'LPP/Budgetary offer\n selected for estimate', 'Estimated Rate\n(5% yearly escalation)',
                 'Total Value'
             ]
         };
@@ -1830,7 +1833,7 @@
                     AnnexureA_Rules.getLastPoNo(me2mRecords),
                     AnnexureA_Rules.getLastPoDate(me2mRecords),
                     AnnexureA_Rules.getLPP(me2mRecords),
-                    AnnexureA_Rules.getBudgetaryOffer(me2mRecords),
+                    AnnexureA_Rules.getSelectedOfferLabel(me2mRecords),
                     AnnexureA_Rules.getEstimatedRate(me2mRecords),
                     AnnexureA_Rules.getTotalValue()
                 ];
