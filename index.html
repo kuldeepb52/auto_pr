@@ -1675,10 +1675,14 @@
     if (!latestRow) return 'NA';
     return formatSapDate(getValueByFlexibleKey(latestRow, 'documentdate', 'ME2M')) || 'NA';
 },
-            getLPP: (me2mRecords) => getLPP(me2mRecords),
-            getSelectedOfferLabel: (me2mRecords) => {
+        getLPP: (me2mRecords) => getLPP(me2mRecords),
+        getSelectedOfferLabel: (me2mRecords) => {
         const r = resolveLPP(me2mRecords);
         return (r.status === 'valid') ? 'LPP' : 'Budgetary offer';
+    },
+        getBudgetaryOfferIndicator: (me2mRecords) => {
+        const r = resolveLPP(me2mRecords);
+        return (r.status === 'valid') ? 'NA' : 'As per BO';
     },
             getEstimatedRate: (me2mRecords) => getEstimatedRate(me2mRecords),
             getTotalValue: () => ''
@@ -1726,8 +1730,7 @@
             AnnexureA_Headers: [
                 'S No.', 'Material', 'Material Description', 'Population',
                 'Stock Qty', 'Qty requested', 'Unit of Measure', 'LPP PO No. / SL No.',
-                'LPP PO date', 'LPP price', 'LPP / Budgetary offer\n (selected for estimate)', 'Estimated Rate\n(5% yearly escalation)',
-                'Total Value'
+                'LPP PO date', 'LPP price', 'LPP / Budgetary offer\n (selected for estimate)', 'Budgetary offer price', 'Estimated Rate\n(5% yearly escalation)', 'Total Value'
             ]
         };
 
@@ -1834,8 +1837,9 @@
                     AnnexureA_Rules.getLastPoDate(me2mRecords),
                     AnnexureA_Rules.getLPP(me2mRecords),
                     AnnexureA_Rules.getSelectedOfferLabel(me2mRecords),
-                    AnnexureA_Rules.getEstimatedRate(me2mRecords),
-                    AnnexureA_Rules.getTotalValue()
+                    AnnexureA_Rules.getBudgetaryOfferIndicator(me2mRecords),     // col L (NEW)
+                    AnnexureA_Rules.getEstimatedRate(me2mRecords),               // col M
+                 AnnexureA_Rules.getTotalValue()  
                 ];
             });
 
@@ -1848,7 +1852,7 @@
                 SCHEMA_TEMPLATES.AnnexureA_Headers,
                 [],
                 ...dataRows,
-                ['TOTAL', '', '', '', '', '', '', '', '', '', '', '', sumFormula]
+                ['TOTAL', '', '', '', '', '', '', '', '', '', '', '', '', sumFormula]
             ];
         }
 
@@ -1901,79 +1905,77 @@
                 sheet.getColumn('S').width = 25;
             }
 
-            if (sheetName === 'ESTIMATION') {
-                const totalRows = sheet.rowCount;
-                const DATA_START = 8;
-                const HEADER_ROW = 6;
+if (sheetName === 'ESTIMATION') {
+    const totalRows = sheet.rowCount;
+    const DATA_START = 8;
+    const HEADER_ROW = 6;
 
-                sheet.mergeCells('A1:M1');
-                sheet.mergeCells('A2:G2');
-                sheet.mergeCells('A3:G3');
-                sheet.mergeCells('A4:G4');
-                sheet.mergeCells('A5:G5');
-                ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M'].forEach(col =>
-                    sheet.mergeCells(`${col}6:${col}7`)
-                );
-                sheet.mergeCells(`A${totalRows}:L${totalRows}`);
+    // Merges
+    sheet.mergeCells('A1:N1');
+    sheet.mergeCells('A2:G2');
+    sheet.mergeCells('A3:G3');
+    sheet.mergeCells('A4:G4');
+    sheet.mergeCells('A5:G5');
+    ['A','B','C','D','E','F','G','H','I','J','K','L','M','N'].forEach(col =>
+        sheet.mergeCells(`${col}6:${col}7`)
+    );
+    sheet.mergeCells(`A${totalRows}:M${totalRows}`);
 
-                [1, 2, 3, 4, 5].forEach(r => { sheet.getRow(r).height = 15.6; });
-                sheet.getRow(totalRows).height = 15.6;
+    // Row heights
+    [1,2,3,4,5].forEach(r => { sheet.getRow(r).height = 15.6; });
+    sheet.getRow(totalRows).height = 15.6;
 
-                const greenFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF92D050' } };
-                const yellowFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
+    // Fills
+    const greenFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF92D050' } };
+    const yellowFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
 
-                sheet.eachRow((row, rn) => {
-                    row.eachCell({ includeEmpty: true }, (cell, cn) => {
-                        if (rn === 1) {
-                            cell.font = { bold: true, name: 'Calibri' };
-                            cell.fill = greenFill;
-                            cell.alignment = { horizontal: 'center', vertical: 'center', wrapText: false };
-                            cell.border = border;
-                        } else if (rn >= 2 && rn <= 5) {
-                            cell.font = { bold: true, name: 'Calibri' };
-                            cell.alignment = { horizontal: 'left', vertical: 'center', wrapText: false };
-                            cell.border = border;
-                        } else if (rn === HEADER_ROW || rn === HEADER_ROW + 1) {
-                            cell.font = { bold: true, name: 'Calibri' };
-                            cell.fill = yellowFill;
-                            cell.alignment = { horizontal: 'center', vertical: 'center', wrapText: true };
-                            cell.border = border;
-                        } else if (rn >= DATA_START && rn < totalRows) {
-                            cell.font = { name: 'Calibri' };
-                            let alignment = 'center';
-                            if (cn === 3) {
-                                alignment = 'left';
-                            }
-                            cell.alignment = { horizontal: alignment, vertical: 'center', wrapText: false };
-                            cell.border = border;
-                            if (cn === 10 && typeof cell.value === 'number') {
-                                cell.numFmt = '#,##0.00';
-                            }
-                            if (cn === 12 && typeof cell.value === 'number') {
-                                cell.numFmt = '#,##0.00';
-                            }
-                        } else if (rn === totalRows) {
-                            cell.font = { bold: true, name: 'Calibri' };
-                            cell.fill = yellowFill;
-                            cell.alignment = { horizontal: 'center', vertical: 'center', wrapText: false };
-                            cell.border = border;
-                            if (cn === 13) {
-                                cell.numFmt = '#,##0.00';
-                                cell.alignment = { horizontal: 'right', vertical: 'center', wrapText: false };
-                            }
-                        }
-                    });
-                });
-                sheet.getCell(`A${totalRows}`).alignment = { horizontal: 'right', vertical: 'center', wrapText: false };
-
-                for (let r = 2; r <= 5; r++) {
-                    for (let c = 8; c <= 13; c++) {
-                        const cell = sheet.getCell(r, c);
-                        cell.border = border;
-                    }
+    // Apply borders and formatting row by row
+    sheet.eachRow((row, rn) => {
+        row.eachCell({ includeEmpty: true }, (cell, cn) => {
+            cell.border = border; // border defined earlier
+            if (rn === 1) {
+                cell.font = { bold: true, name: 'Calibri' };
+                cell.fill = greenFill;
+                cell.alignment = { horizontal: 'center', vertical: 'center', wrapText: false };
+            } else if (rn >= 2 && rn <= 5) {
+                cell.font = { bold: true, name: 'Calibri' };
+                cell.alignment = { horizontal: 'left', vertical: 'center', wrapText: false };
+            } else if (rn === HEADER_ROW || rn === HEADER_ROW + 1) {
+                cell.font = { bold: true, name: 'Calibri' };
+                cell.fill = yellowFill;
+                cell.alignment = { horizontal: 'center', vertical: 'center', wrapText: true };
+            } else if (rn >= DATA_START && rn < totalRows) {
+                cell.font = { name: 'Calibri' };
+                let alignment = 'center';
+                if (cn === 3) alignment = 'left'; // column C
+                cell.alignment = { horizontal: alignment, vertical: 'center', wrapText: false };
+                // Numeric formatting for price columns
+                if (cn === 10 && typeof cell.value === 'number') { // column J (LPP price)
+                    cell.numFmt = '#,##0.00';
                 }
+                if (cn === 13 && typeof cell.value === 'number') { // column M (Estimated Rate)
+                    cell.numFmt = '#,##0.00';
+                }
+            } else if (rn === totalRows) {
+                cell.font = { bold: true, name: 'Calibri' };
+                cell.fill = yellowFill;
+                cell.alignment = { horizontal: 'center', vertical: 'center', wrapText: false };
+                if (cn === 14) { // column N (Total Value)
+                    cell.numFmt = '#,##0.00';
+                    cell.alignment = { horizontal: 'right', vertical: 'center', wrapText: false };
+                }
+            }
+        });
+    });
 
-            } else if (sheetName === 'JUSTIFICATION') {
+    // Additional adjustments (like borders for the top rows)
+    for (let r = 2; r <= 5; r++) {
+        for (let c = 8; c <= 14; c++) {
+            const cell = sheet.getCell(r, c);
+            cell.border = border;
+        }
+    }
+} else if (sheetName === 'JUSTIFICATION') {
                 const totalRows = sheet.rowCount;
                 const FOOTER_START = totalRows - 4;
 
