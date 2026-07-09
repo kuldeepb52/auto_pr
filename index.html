@@ -1730,7 +1730,7 @@
             AnnexureA_Headers: [
                 'S No.', 'Material', 'Material Description', 'Population',
                 'Stock Qty', 'Qty requested', 'Unit of Measure', 'LPP PO No. / SL No.',
-                'LPP PO date', 'LPP price', 'LPP / Budgetary offer\n (Selected for Estimate)', 'Budgetary offer price/ SL No.', 'Estimated Rate\n(5% yearly escalation ON LPP)', 'Total Value'
+                'LPP PO date', 'LPP price', 'LPP / Budgetary offer\n (Selected for Estimate)', 'Budgetary offer price/ SL No.', 'Estimated Rate\n(5% yearly escalation on LPP)', 'Total Value'
             ]
         };
 
@@ -1897,7 +1897,8 @@
 
             if (sheetName === 'ESTIMATION') {
                 autoFitColumns(sheet, 8);
-                sheet.getColumn('M').width = 35;
+                sheet.getColumn('M').width = 30;
+                sheet.getColumn('M').width = 32;
                 sheet.getColumn('L').width = 35;
             } else if (sheetName === 'JUSTIFICATION') {
                 autoFitColumns(sheet, 7);
