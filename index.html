@@ -513,9 +513,13 @@
             background: #eee;
             color: #333;
         }
-        .status-badge.zcsp { background: #ffd966; color: #7a4a00; }
-        .status-badge.z6 { background: #f4cccc; color: #a61c1c; }
-        .status-badge.z4 { background: #d5e8d0; color: #2d5a27; }
+        /* All status badges now use the same red style */
+        .status-badge.zcsp,
+        .status-badge.z6,
+        .status-badge.z4 {
+            background: #f4cccc;
+            color: #a61c1c;
+        }
 
         /* ===== BLOCKED STATUS BOX – website colors ===== */
         .blocked-status-box {
@@ -2405,7 +2409,7 @@
                     ExecutionLog.info(`Excluded ${excludedCount} material(s) ending with 'N'.`);
                 }
 
-                // Render material tags with badges
+                // Render material tags with badges (all red now)
                 const container = document.getElementById('materialTagsContainer');
                 container.innerHTML = Array.from(sapUniqueMaterials).sort()
                     .map(m => {
