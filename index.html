@@ -131,7 +131,6 @@
         .step-list .step:last-child {
             padding-bottom: 0;
         }
-        /* Vertical line — fixed to go all the way down */
         .step-list .step::before {
             content: "";
             position: absolute;
@@ -501,6 +500,87 @@
             padding: 0.18rem 0.6rem;
             border: 1px solid var(--rule-strong);
             font-size: 0.78rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+        .status-badge {
+            display: inline-block;
+            font-size: 0.6rem;
+            padding: 0.05rem 0.4rem;
+            border-radius: 12px;
+            font-weight: 600;
+            background: #eee;
+            color: #333;
+        }
+        .status-badge.zcsp { background: #ffd966; color: #7a4a00; }
+        .status-badge.z6 { background: #f4cccc; color: #a61c1c; }
+        .status-badge.z4 { background: #d5e8d0; color: #2d5a27; }
+
+        /* ===== BLOCKED STATUS BOX – website colors ===== */
+        .blocked-status-box {
+            border: 1px solid var(--rule);
+            background: var(--paper);
+            margin-top: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .blocked-status-box .box-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.7rem 1rem;
+            border-bottom: 1px solid var(--rule);
+            font-size: 0.82rem;
+        }
+        .blocked-status-box .box-head .box-title {
+            font-weight: 600;
+            color: var(--ink);
+        }
+        .blocked-status-box .box-head .badge-count {
+            font-family: 'IBM Plex Mono', monospace;
+            font-weight: 500;
+            color: var(--accent);
+            background: var(--accent-soft);
+            padding: 0.1rem 0.6rem;
+            border-radius: 40px;
+            font-size: 0.7rem;
+        }
+        .blocked-list {
+            list-style: none;
+            padding: 0.9rem 1rem;
+            margin: 0;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        .blocked-list li {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.82rem;
+            padding: 0.2rem 0;
+            border-bottom: 1px solid var(--rule);
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+        .blocked-list li:last-child {
+            border-bottom: none;
+        }
+        .blocked-list li .material-code {
+            background: var(--surface);
+            padding: 0.05rem 0.5rem;
+            border: 1px solid var(--rule-strong);
+        }
+        .blocked-list li .issue-tag {
+            font-weight: 600;
+            color: var(--accent);
+            background: var(--accent-soft);
+            padding: 0 0.5rem;
+            border-radius: 12px;
+            font-size: 0.7rem;
+        }
+        .blocked-empty {
+            padding: 0.9rem 1rem;
+            color: var(--ink-faint);
+            font-size: 0.85rem;
         }
 
         .form-group {
@@ -568,9 +648,6 @@
             margin: 1.8rem 0 1.6rem;
         }
 
-        /* ============================================================
-           OPTIONS GRID (side by side)
-           ============================================================ */
         .options-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -850,13 +927,10 @@
         .file-upload-row .file-name.empty {
             color: var(--ink-faint);
         }
-        /* Mandatory asterisk styling */
         .mandatory-star {
             color: red;
             margin-left: 2px;
         }
-
-        /* Fix for inline label + info icon in file-upload-row */
         .file-upload-row .upload-label-with-icon {
             display: inline-flex;
             align-items: center;
@@ -866,6 +940,36 @@
         }
         .file-upload-row .upload-label-with-icon .info-icon-wrapper {
             margin-left: 0.1rem;
+        }
+
+        /* ===== TOGGLE BUTTON ===== */
+        .toggle-section-btn {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            font-weight: 700;
+            cursor: pointer;
+            padding: 0 0.3rem;
+            color: var(--accent);
+            transition: transform 0.2s;
+            margin-right: 0.3rem;
+        }
+        .toggle-section-btn:hover {
+            color: var(--accent-deep);
+        }
+        .additional-section-content {
+            margin-top: 0.5rem;
+        }
+        .additional-section-content.collapsed {
+            display: none;
+        }
+        .form-group .label-with-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.2rem;
+        }
+        .form-group .label-with-toggle label {
+            margin-bottom: 0;
         }
     </style>
 </head>
@@ -977,35 +1081,49 @@
                         <div id="materialTagsContainer" class="material-tags"></div>
                     </div>
 
-                    <!-- Additional material codes: textarea + file upload -->
-                    <div class="form-group">
-                        <label for="anchorList">
-                            Add additional material codes
-                            <span class="info-icon-wrapper" id="infoIconWrapper">
-                                <span class="info-icon" id="infoIcon">i</span>
-                                <span class="info-tooltip" id="infoTooltip">
-                                    To add missing codes or input a complete master list, simply copy (Ctrl+C) the data from Excel and paste (Ctrl+V) it into the text box below, or upload a supplementary Excel file. The system automatically compares the input against the existing data, filters out duplicates, and appends only the new codes to generate the final annexures.
-                                </span>
-                            </span>
-                        </label>
-                        <textarea id="anchorList" rows="3" placeholder="One per line or comma-separated, e.g.&#10;M123456789&#10;M987654321"></textarea>
-                        <!-- Removed the help text "These are merged with the unique materials codes found in input files scan." -->
+                    <!-- ===== BLOCKED STATUS BOX – always visible (no emoji) ===== -->
+                    <div class="blocked-status-box">
+                        <div class="box-head">
+                            <span class="box-title">ZCSP / Z6 / Z4 STATUS</span>
+                            <span class="badge-count" id="blockedCount">0</span>
+                        </div>
+                        <ul class="blocked-list" id="blockedList">
+                            <li class="blocked-empty">No scan run yet.</li>
+                        </ul>
+                    </div>
 
-                        <!-- Upload option -->
-                        <div class="file-upload-row">
-                            <span class="upload-label-with-icon">
-                                Or upload an Excel file:
-                                <span class="info-icon-wrapper" id="uploadInfoWrapper">
-                                    <span class="info-icon" id="uploadInfoIcon">i</span>
-                                    <span class="info-tooltip" id="uploadInfoTooltip">
-                                        The file should contain material codes in the first column (starting from the first row).
+                    <!-- Additional material codes: collapsible -->
+                    <div class="form-group">
+                        <div class="label-with-toggle">
+                            <button class="toggle-section-btn" id="toggleAdditionalBtn" aria-label="Toggle additional material codes section">＋</button>
+                            <label for="anchorList">
+                                Add additional material codes
+                                <span class="info-icon-wrapper" id="infoIconWrapper">
+                                    <span class="info-icon" id="infoIcon">i</span>
+                                    <span class="info-tooltip" id="infoTooltip">
+                                        To add missing codes or input a complete master list, simply copy (Ctrl+C) the data from Excel and paste (Ctrl+V) it into the text box below, or upload a supplementary Excel file. The system automatically compares the input against the existing data, filters out duplicates, and appends only the new codes to generate the final annexures.
                                     </span>
                                 </span>
-                            </span>
-                            <input type="file" id="additionalMaterialFile" accept=".xlsx,.xls,.csv" />
-                            <span class="file-name empty" id="additionalFileName">No file selected</span>
+                            </label>
                         </div>
-                        <!-- Removed the help text "The file should contain material codes in the first column (starting from the first row)." -->
+                        <div class="additional-section-content" id="additionalSectionContent">
+                            <textarea id="anchorList" rows="3" placeholder="One per line or comma-separated, e.g.&#10;M123456789&#10;M987654321"></textarea>
+
+                            <!-- Upload option -->
+                            <div class="file-upload-row">
+                                <span class="upload-label-with-icon">
+                                    Or upload an Excel file:
+                                    <span class="info-icon-wrapper" id="uploadInfoWrapper">
+                                        <span class="info-icon" id="uploadInfoIcon">i</span>
+                                        <span class="info-tooltip" id="uploadInfoTooltip">
+                                            The file should contain material codes in the first column (starting from the first row).
+                                        </span>
+                                    </span>
+                                </span>
+                                <input type="file" id="additionalMaterialFile" accept=".xlsx,.xls,.csv" />
+                                <span class="file-name empty" id="additionalFileName">No file selected</span>
+                            </div>
+                        </div>
                     </div>
                 </section>
 
@@ -1165,7 +1283,11 @@
             ],
             'currfinyear': ['currfinyear', 'curr fin year', 'curr fin yr', 'cons curr fin year', 'conscurrfin year'],
             'plant': ['plant', 'plant code', 'plant no', 'plant number'],
-            'shorttext': ['shorttext', 'short text', 'short text', 'short description', 'short desc', 'shortdesc']
+            'shorttext': ['shorttext', 'short text', 'short text', 'short description', 'short desc', 'shortdesc'],
+            // NEW status columns
+            'mat.type': ['mat.type', 'mat type', 'material type', 'mat. type', 'type'],
+            'crossplantstatus': ['cross-plant material status', 'cross plant material status', 'crossplant status'],
+            'plantspecificstatus': ['plantspecificmaterialstatus', 'plant specific material status', 'plant specific status']
         };
 
         const ALIAS_TO_KEY = {};
@@ -1316,7 +1438,8 @@
             let expectedKeys = [];
             if (fileType === 'ZMM') {
                 expectedKeys = ['material', 'description', 'stock', 'doc.type', 'doc.detail', 'req.date', 'quantity',
-                    'yr-4', 'yr-3', 'yr-2', 'prevfn', 'currfin.year', 'currfinyear'
+                    'yr-4', 'yr-3', 'yr-2', 'prevfn', 'currfin.year', 'currfinyear',
+                    'mat.type', 'crossplantstatus', 'plantspecificstatus'
                 ];
             } else if (fileType === 'ME2M') {
                 expectedKeys = ['material', 'shorttext', 'orderunit', 'purchasingdocument', 'netprice', 'documentdate',
@@ -1643,47 +1766,45 @@
                 if (!me2mRecords || me2mRecords.length === 0) return 'No Records Found';
                 return String(getValueByFlexibleKey(me2mRecords[0], 'orderunit', 'ME2M')).trim() || 'No Records Found';
             },
-          getLastPoNo: (me2mRecords) => {
-    const lppStatus = resolveLPP(me2mRecords);
-    if (lppStatus.status !== 'valid') {
-        return 'NA';
-    }
-    const latestRow = getLatestMe2mRecord(me2mRecords);
-    if (!latestRow) return 'NA';
+            getLastPoNo: (me2mRecords) => {
+                const lppStatus = resolveLPP(me2mRecords);
+                if (lppStatus.status !== 'valid') {
+                    return 'NA';
+                }
+                const latestRow = getLatestMe2mRecord(me2mRecords);
+                if (!latestRow) return 'NA';
 
-    const poNumber = String(getValueByFlexibleKey(latestRow, 'purchasingdocument', 'ME2M')).trim();
-    const itemNumber = String(getValueByFlexibleKey(latestRow, 'item', 'ME2M')).trim();
+                const poNumber = String(getValueByFlexibleKey(latestRow, 'purchasingdocument', 'ME2M')).trim();
+                const itemNumber = String(getValueByFlexibleKey(latestRow, 'item', 'ME2M')).trim();
 
-    // Combine both if available, otherwise fall back to whichever exists
-    if (poNumber && itemNumber) {
-        return `${poNumber} / ${itemNumber}`;
-    } else if (poNumber) {
-        return poNumber;
-    } else if (itemNumber) {
-        return itemNumber;
-    } else {
-        return 'NA';
-    }
-},
-           getLastPoDate: (me2mRecords) => {
-    const lppStatus = resolveLPP(me2mRecords);
-    // If no records OR beyond 3 years, return 'NA'
-    if (lppStatus.status !== 'valid') {
-        return 'NA';
-    }
-    const latestRow = getLatestMe2mRecord(me2mRecords);
-    if (!latestRow) return 'NA';
-    return formatSapDate(getValueByFlexibleKey(latestRow, 'documentdate', 'ME2M')) || 'NA';
-},
-        getLPP: (me2mRecords) => getLPP(me2mRecords),
-        getSelectedOfferLabel: (me2mRecords) => {
-        const r = resolveLPP(me2mRecords);
-        return (r.status === 'valid') ? 'LPP' : 'Budgetary offer';
-    },
-        getBudgetaryOfferIndicator: (me2mRecords) => {
-        const r = resolveLPP(me2mRecords);
-        return (r.status === 'valid') ? 'NA' : 'As per BO';
-    },
+                if (poNumber && itemNumber) {
+                    return `${poNumber} / ${itemNumber}`;
+                } else if (poNumber) {
+                    return poNumber;
+                } else if (itemNumber) {
+                    return itemNumber;
+                } else {
+                    return 'NA';
+                }
+            },
+            getLastPoDate: (me2mRecords) => {
+                const lppStatus = resolveLPP(me2mRecords);
+                if (lppStatus.status !== 'valid') {
+                    return 'NA';
+                }
+                const latestRow = getLatestMe2mRecord(me2mRecords);
+                if (!latestRow) return 'NA';
+                return formatSapDate(getValueByFlexibleKey(latestRow, 'documentdate', 'ME2M')) || 'NA';
+            },
+            getLPP: (me2mRecords) => getLPP(me2mRecords),
+            getSelectedOfferLabel: (me2mRecords) => {
+                const r = resolveLPP(me2mRecords);
+                return (r.status === 'valid') ? 'LPP' : 'Budgetary offer';
+            },
+            getBudgetaryOfferIndicator: (me2mRecords) => {
+                const r = resolveLPP(me2mRecords);
+                return (r.status === 'valid') ? 'NA' : 'As per BO';
+            },
             getEstimatedRate: (me2mRecords) => getEstimatedRate(me2mRecords),
             getTotalValue: () => ''
         };
@@ -1837,9 +1958,9 @@
                     AnnexureA_Rules.getLastPoDate(me2mRecords),
                     AnnexureA_Rules.getLPP(me2mRecords),
                     AnnexureA_Rules.getSelectedOfferLabel(me2mRecords),
-                    AnnexureA_Rules.getBudgetaryOfferIndicator(me2mRecords),     // col L (NEW)
-                    AnnexureA_Rules.getEstimatedRate(me2mRecords),               // col M
-                 AnnexureA_Rules.getTotalValue()  
+                    AnnexureA_Rules.getBudgetaryOfferIndicator(me2mRecords),
+                    AnnexureA_Rules.getEstimatedRate(me2mRecords),
+                    AnnexureA_Rules.getTotalValue()
                 ];
             });
 
@@ -1907,77 +2028,71 @@
                 sheet.getColumn('S').width = 25;
             }
 
-if (sheetName === 'ESTIMATION') {
-    const totalRows = sheet.rowCount;
-    const DATA_START = 8;
-    const HEADER_ROW = 6;
+            if (sheetName === 'ESTIMATION') {
+                const totalRows = sheet.rowCount;
+                const DATA_START = 8;
+                const HEADER_ROW = 6;
 
-    // Merges
-    sheet.mergeCells('A1:N1');
-    sheet.mergeCells('A2:G2');
-    sheet.mergeCells('A3:G3');
-    sheet.mergeCells('A4:G4');
-    sheet.mergeCells('A5:G5');
-    ['A','B','C','D','E','F','G','H','I','J','K','L','M','N'].forEach(col =>
-        sheet.mergeCells(`${col}6:${col}7`)
-    );
-    sheet.mergeCells(`A${totalRows}:M${totalRows}`);
+                sheet.mergeCells('A1:N1');
+                sheet.mergeCells('A2:G2');
+                sheet.mergeCells('A3:G3');
+                sheet.mergeCells('A4:G4');
+                sheet.mergeCells('A5:G5');
+                ['A','B','C','D','E','F','G','H','I','J','K','L','M','N'].forEach(col =>
+                    sheet.mergeCells(`${col}6:${col}7`)
+                );
+                sheet.mergeCells(`A${totalRows}:M${totalRows}`);
 
-    // Row heights
-    [1,2,3,4,5].forEach(r => { sheet.getRow(r).height = 15.6; });
-    sheet.getRow(totalRows).height = 15.6;
+                [1,2,3,4,5].forEach(r => { sheet.getRow(r).height = 15.6; });
+                sheet.getRow(totalRows).height = 15.6;
 
-    // Fills
-    const greenFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF92D050' } };
-    const yellowFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
+                const greenFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF92D050' } };
+                const yellowFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
 
-    // Apply borders and formatting row by row
-    sheet.eachRow((row, rn) => {
-        row.eachCell({ includeEmpty: true }, (cell, cn) => {
-            cell.border = border; // border defined earlier
-            if (rn === 1) {
-                cell.font = { bold: true, name: 'Calibri' };
-                cell.fill = greenFill;
-                cell.alignment = { horizontal: 'center', vertical: 'center', wrapText: false };
-            } else if (rn >= 2 && rn <= 5) {
-                cell.font = { bold: true, name: 'Calibri' };
-                cell.alignment = { horizontal: 'left', vertical: 'center', wrapText: false };
-            } else if (rn === HEADER_ROW || rn === HEADER_ROW + 1) {
-                cell.font = { bold: true, name: 'Calibri' };
-                cell.fill = yellowFill;
-                cell.alignment = { horizontal: 'center', vertical: 'center', wrapText: true };
-            } else if (rn >= DATA_START && rn < totalRows) {
-                cell.font = { name: 'Calibri' };
-                let alignment = 'center';
-                if (cn === 3) alignment = 'left'; // column C
-                cell.alignment = { horizontal: alignment, vertical: 'center', wrapText: false };
-                // Numeric formatting for price columns
-                if (cn === 10 && typeof cell.value === 'number') { // column J (LPP price)
-                    cell.numFmt = '#,##0.00';
+                sheet.eachRow((row, rn) => {
+                    row.eachCell({ includeEmpty: true }, (cell, cn) => {
+                        cell.border = border;
+                        if (rn === 1) {
+                            cell.font = { bold: true, name: 'Calibri' };
+                            cell.fill = greenFill;
+                            cell.alignment = { horizontal: 'center', vertical: 'center', wrapText: false };
+                        } else if (rn >= 2 && rn <= 5) {
+                            cell.font = { bold: true, name: 'Calibri' };
+                            cell.alignment = { horizontal: 'left', vertical: 'center', wrapText: false };
+                        } else if (rn === HEADER_ROW || rn === HEADER_ROW + 1) {
+                            cell.font = { bold: true, name: 'Calibri' };
+                            cell.fill = yellowFill;
+                            cell.alignment = { horizontal: 'center', vertical: 'center', wrapText: true };
+                        } else if (rn >= DATA_START && rn < totalRows) {
+                            cell.font = { name: 'Calibri' };
+                            let alignment = 'center';
+                            if (cn === 3) alignment = 'left';
+                            cell.alignment = { horizontal: alignment, vertical: 'center', wrapText: false };
+                            if (cn === 10 && typeof cell.value === 'number') {
+                                cell.numFmt = '#,##0.00';
+                            }
+                            if (cn === 13 && typeof cell.value === 'number') {
+                                cell.numFmt = '#,##0.00';
+                            }
+                        } else if (rn === totalRows) {
+                            cell.font = { bold: true, name: 'Calibri' };
+                            cell.fill = yellowFill;
+                            cell.alignment = { horizontal: 'center', vertical: 'center', wrapText: false };
+                            if (cn === 14) {
+                                cell.numFmt = '#,##0.00';
+                                cell.alignment = { horizontal: 'right', vertical: 'center', wrapText: false };
+                            }
+                        }
+                    });
+                });
+
+                for (let r = 2; r <= 5; r++) {
+                    for (let c = 8; c <= 14; c++) {
+                        const cell = sheet.getCell(r, c);
+                        cell.border = border;
+                    }
                 }
-                if (cn === 13 && typeof cell.value === 'number') { // column M (Estimated Rate)
-                    cell.numFmt = '#,##0.00';
-                }
-            } else if (rn === totalRows) {
-                cell.font = { bold: true, name: 'Calibri' };
-                cell.fill = yellowFill;
-                cell.alignment = { horizontal: 'center', vertical: 'center', wrapText: false };
-                if (cn === 14) { // column N (Total Value)
-                    cell.numFmt = '#,##0.00';
-                    cell.alignment = { horizontal: 'right', vertical: 'center', wrapText: false };
-                }
-            }
-        });
-    });
-
-    // Additional adjustments (like borders for the top rows)
-    for (let r = 2; r <= 5; r++) {
-        for (let c = 8; c <= 14; c++) {
-            const cell = sheet.getCell(r, c);
-            cell.border = border;
-        }
-    }
-} else if (sheetName === 'JUSTIFICATION') {
+            } else if (sheetName === 'JUSTIFICATION') {
                 const totalRows = sheet.rowCount;
                 const FOOTER_START = totalRows - 4;
 
@@ -2061,7 +2176,26 @@ if (sheetName === 'ESTIMATION') {
         let parsedZmmData = [];
         let parsedMe2mData = [];
         let sapUniqueMaterials = new Set();
+        let materialStatusMap = new Map();
         let scanComplete = false;
+
+        // ---- Toggle additional section ----
+        const toggleBtn = document.getElementById('toggleAdditionalBtn');
+        const additionalContent = document.getElementById('additionalSectionContent');
+        let isAdditionalOpen = false;
+
+        toggleBtn.addEventListener('click', function() {
+            isAdditionalOpen = !isAdditionalOpen;
+            if (isAdditionalOpen) {
+                additionalContent.classList.remove('collapsed');
+                toggleBtn.textContent = '−';
+            } else {
+                additionalContent.classList.add('collapsed');
+                toggleBtn.textContent = '＋';
+            }
+        });
+        // Initially collapsed
+        additionalContent.classList.add('collapsed');
 
         function parseExcelToJson(file) {
             return new Promise((resolve, reject) => {
@@ -2138,7 +2272,6 @@ if (sheetName === 'ESTIMATION') {
             e.stopPropagation();
             this.classList.toggle('show-tooltip');
         });
-        // Click anywhere else closes the tooltips
         document.addEventListener('click', function(e) {
             const wrappers = document.querySelectorAll('.info-icon-wrapper');
             wrappers.forEach(wrapper => {
@@ -2166,7 +2299,6 @@ if (sheetName === 'ESTIMATION') {
                     const data = new Uint8Array(ev.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
                     const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-                    // Read first column from the first row onward (no header detection)
                     const range = XLSX.utils.decode_range(worksheet['!ref']);
                     const codes = [];
                     for (let row = range.s.r; row <= range.e.r; row++) {
@@ -2210,6 +2342,7 @@ if (sheetName === 'ESTIMATION') {
 
             ColumnLog.clear();
             _loggedKeys.clear();
+            materialStatusMap.clear();
 
             try {
                 ExecutionLog.info('Parsing ZMMMATHIST…');
@@ -2235,28 +2368,84 @@ if (sheetName === 'ESTIMATION') {
                 }
 
                 sapUniqueMaterials.clear();
-                const allRows = [...parsedZmmData, ...parsedMe2mData];
                 let excludedCount = 0;
-                allRows.forEach(row => {
+
+                parsedZmmData.forEach(row => {
                     const mat = String(getValueByFlexibleKey(row, 'material', 'ZMM')).trim();
-                    if (mat) {
-                        if (isMaterialExcluded(mat)) {
-                            excludedCount++;
-                        } else {
-                            sapUniqueMaterials.add(mat);
+                    if (!mat) return;
+                    const matType = String(getValueByFlexibleKey(row, 'mat.type', 'ZMM')).trim();
+                    const crossStatus = String(getValueByFlexibleKey(row, 'crossplantstatus', 'ZMM')).trim();
+                    const plantStatus = String(getValueByFlexibleKey(row, 'plantspecificstatus', 'ZMM')).trim();
+                    if (!materialStatusMap.has(mat)) {
+                        materialStatusMap.set(mat, { matType, crossStatus, plantStatus });
+                    } else {
+                        const existing = materialStatusMap.get(mat);
+                        if (matType && !existing.matType) existing.matType = matType;
+                        if (crossStatus && !existing.crossStatus) existing.crossStatus = crossStatus;
+                        if (plantStatus && !existing.plantStatus) existing.plantStatus = plantStatus;
+                    }
+                    if (!isMaterialExcluded(mat)) {
+                        sapUniqueMaterials.add(mat);
+                    } else {
+                        excludedCount++;
+                    }
+                });
+
+                parsedMe2mData.forEach(row => {
+                    const mat = String(getValueByFlexibleKey(row, 'material', 'ME2M')).trim();
+                    if (mat && !isMaterialExcluded(mat)) {
+                        sapUniqueMaterials.add(mat);
+                        if (!materialStatusMap.has(mat)) {
+                            materialStatusMap.set(mat, { matType: '', crossStatus: '', plantStatus: '' });
                         }
                     }
                 });
+
                 if (excludedCount > 0) {
                     ExecutionLog.info(`Excluded ${excludedCount} material(s) ending with 'N'.`);
                 }
 
+                // Render material tags with badges
                 const container = document.getElementById('materialTagsContainer');
                 container.innerHTML = Array.from(sapUniqueMaterials).sort()
-                    .map(m => `<span class="material-tag">${m}</span>`).join('');
+                    .map(m => {
+                        const status = materialStatusMap.get(m) || {};
+                        let badges = '';
+                        if (status.matType === 'ZCSP') badges += ' <span class="status-badge zcsp">ZCSP</span>';
+                        if (status.crossStatus === 'Z6') badges += ' <span class="status-badge z6">Z6</span>';
+                        if (status.plantStatus === 'Z4') badges += ' <span class="status-badge z4">Z4</span>';
+                        return `<span class="material-tag">${m}${badges}</span>`;
+                    }).join('');
 
                 document.getElementById('scanResult').textContent =
                     `Found ${sapUniqueMaterials.size} unique material(s) in SAP.`;
+
+                // ----- Update blocked status box -----
+                const blockedList = document.getElementById('blockedList');
+                const blockedItems = [];
+                materialStatusMap.forEach((status, mat) => {
+                    if (!sapUniqueMaterials.has(mat)) return;
+                    const issues = [];
+                    if (status.matType === 'ZCSP') issues.push('ZCSP');
+                    if (status.crossStatus === 'Z6') issues.push('Cross-Plant Z6');
+                    if (status.plantStatus === 'Z4') issues.push('Plant-Specific Z4');
+                    if (issues.length > 0) {
+                        blockedItems.push({ material: mat, issues });
+                    }
+                });
+
+                // Update count badge
+                document.getElementById('blockedCount').textContent = blockedItems.length;
+
+                if (blockedItems.length > 0) {
+                    blockedList.innerHTML = blockedItems.map(item =>
+                        `<li><span class="material-code">${item.material}</span> <span class="issue-tag">${item.issues.join(', ')}</span></li>`
+                    ).join('');
+                    ExecutionLog.info(`Found ${blockedItems.length} material(s) with ZCSP/Z6/Z4 status.`);
+                } else {
+                    blockedList.innerHTML = `<li class="blocked-empty">No materials with ZCSP/Z6/Z4 status found.</li>`;
+                    ExecutionLog.info('No materials with ZCSP/Z6/Z4 status found.');
+                }
 
                 ExecutionLog.success(`Scan complete. Found ${sapUniqueMaterials.size} unique material(s).`);
 
@@ -2266,7 +2455,6 @@ if (sheetName === 'ESTIMATION') {
                 document.getElementById('genStatus').style.display = 'none';
                 ExecutionLog.info('Annexure generation buttons enabled.');
 
-                // Navigate to step 2 after scan (the scan results panel)
                 updateNav(2);
 
             } catch (error) {
@@ -2299,7 +2487,7 @@ if (sheetName === 'ESTIMATION') {
             selectedPlant = document.getElementById('plantCode').value.trim();
         }
 
-        // ---- Generate A (Estimation Sheet) ----
+        // ---- Generate A ----
         document.getElementById('genA').addEventListener('click', async () => {
             if (!scanComplete) {
                 document.getElementById('genStatus').style.display = 'block';
@@ -2347,7 +2535,7 @@ if (sheetName === 'ESTIMATION') {
             }
         });
 
-        // ---- Generate B (Procurement Justification Sheet) ----
+        // ---- Generate B ----
         document.getElementById('genB').addEventListener('click', async () => {
             if (!scanComplete) {
                 document.getElementById('genStatus').style.display = 'block';
@@ -2412,11 +2600,12 @@ if (sheetName === 'ESTIMATION') {
             e.preventDefault();
             window.open(HOW_TO_PDF_URL, '_blank');
         });
-const BUG_REPORT_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSdQ1p2cv0VELg2Quf0rRSBHHzoTTRLXuZswyOOtXQFMWU3ZLQ/viewform';   
-document.getElementById('navBug').addEventListener('click', (e) => {
-    e.preventDefault();
-    window.open(BUG_REPORT_URL, '_blank');
-});
+        const BUG_REPORT_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSdQ1p2cv0VELg2Quf0rRSBHHzoTTRLXuZswyOOtXQFMWU3ZLQ/viewform';   
+        document.getElementById('navBug').addEventListener('click', (e) => {
+            e.preventDefault();
+            window.open(BUG_REPORT_URL, '_blank');
+        });
+        const BUG_EMAIL = 'kuldeepb52@gmail.com';
         const FEEDBACK_SUBJECT = 'AUTO_PR Feedback';
         document.getElementById('navFeedback').addEventListener('click', (e) => {
             e.preventDefault();
